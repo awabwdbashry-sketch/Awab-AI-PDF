@@ -208,9 +208,10 @@ def create_vector_store(filename):
 
     embeddings = model.encode(
         embedding_inputs,
+        batch_size=8,
         convert_to_numpy=True,
         normalize_embeddings=True,
-        show_progress_bar=True
+        show_progress_bar=False
     )
 
     embeddings = np.array(
