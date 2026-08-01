@@ -1422,7 +1422,7 @@ button, input, textarea{
 
 <form class="upload-form" action="/upload-chat" method="post" enctype="multipart/form-data" id="upload-form">
     <label for="pdf-file-add" class="upload-btn" title="رفع PDF">📎</label>
-    <input type="file" id="pdf-file-add" name="file" accept=".pdf" style="display:none;">
+    <input type="file" id="pdf-file-add" name="files" accept=".pdf" multiple style="display:none;">
     {% if conversation_id %}<input type="hidden" name="conversation_id" value="{{ conversation_id }}">{% endif %}
 </form>
 
@@ -1441,8 +1441,8 @@ button, input, textarea{
 
 </div>
 
-<div class="footer-powered">
-    ✨ مدعوم بالذكاء الاصطناعي  • 📄 دعم ملفات PDF متعددة • ⚡ استجابة فورية • 🔎 بحث ذكي • 💙 تم تطويره بواسطة Awab
+<div class="shortcut-hint">
+    <kbd>Ctrl</kbd>+<kbd>Enter</kbd> إرسال &nbsp;•&nbsp; <kbd>Ctrl</kbd>+<kbd>K</kbd> بحث &nbsp;•&nbsp; <kbd>Ctrl</kbd>+<kbd>N</kbd> محادثة جديدة &nbsp;•&nbsp; <kbd>Esc</kbd> إغلاق القائمة
 </div>
 
 

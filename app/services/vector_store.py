@@ -30,18 +30,26 @@ def get_model():
     return MODEL
 
 
+# ---------------------------------------------------------------------------
+# DEPLOYMENT FIX: these used to be plain relative strings ("app/uploads/...")
+# which only resolve correctly if the process's current working directory
+# happens to be the project root. That's true when running locally from the
+# project folder, but is NOT guaranteed on every platform/start command, and
+# silently breaks (FileNotFoundError / files "disappearing") if the working
+# directory is ever different. Building the path from this file's own
+# location makes it work no matter where the process is launched from.
+# ---------------------------------------------------------------------------
+APP_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # .../app
 
-VECTOR_FOLDER = "app/uploads/vectors"
+VECTOR_FOLDER = os.path.join(APP_DIR, "uploads", "vectors")
 
-TEXT_FOLDER = "app/uploads/texts"
-
+TEXT_FOLDER = os.path.join(APP_DIR, "uploads", "texts")
 
 
 os.makedirs(
     VECTOR_FOLDER,
     exist_ok=True
 )
-
 
 
 def clean_filename(filename):
@@ -59,7 +67,6 @@ def clean_filename(filename):
     return filename
 
 
-
 def generate_file_id(filename):
 
     filename = clean_filename(filename)
@@ -67,7 +74,6 @@ def generate_file_id(filename):
     return hashlib.md5(
         filename.encode("utf-8")
     ).hexdigest()
-
 
 
 def normalize_arabic_text(text):
@@ -82,7 +88,6 @@ def normalize_arabic_text(text):
     text = re.sub(r'\n{3,}', '\n\n', text)
 
     return text.strip()
-
 
 
 def split_into_chunks(text, chunk_size=800, overlap=150):
@@ -121,7 +126,6 @@ def split_into_chunks(text, chunk_size=800, overlap=150):
     return chunks
 
 
-
 def load_pages(filename):
 
     text_file = filename.replace(".pdf", ".json")
@@ -143,7 +147,6 @@ def load_pages(filename):
         return json.load(file)
 
 
-
 def create_vector_store(filename):
 
     filename = clean_filename(filename)
@@ -153,11 +156,7 @@ def create_vector_store(filename):
     print("الملف:", filename)
     print("=" * 50)
 
-
-
     pages = load_pages(filename)
-
-
 
     if pages is None:
 
@@ -165,15 +164,11 @@ def create_vector_store(filename):
 
         return False
 
-
-
     if not pages:
 
         print("الملف فارغ ❌")
 
         return False
-
-
 
     # chunk PER PAGE and tag every chunk with its page number:
     # {"text": "...", "page": 3}
@@ -193,11 +188,7 @@ def create_vector_store(filename):
                 "page": page_number
             })
 
-
-
     print("عدد الأجزاء:", len(chunks))
-
-
 
     if len(chunks) == 0:
 
@@ -205,15 +196,9 @@ def create_vector_store(filename):
 
         return False
 
-
-
     model = get_model()
 
-
-
     print("جاري إنشاء Embeddings...")
-
-
 
     # Embed ONLY chunk["text"] - page metadata is never embedded.
     embedding_inputs = [
@@ -228,61 +213,43 @@ def create_vector_store(filename):
         show_progress_bar=True
     )
 
-
-
     embeddings = np.array(
         embeddings,
         dtype="float32"
     )
 
-
-
     dimension = embeddings.shape[1]
-
-
 
     index = faiss.IndexFlatIP(
         dimension
     )
 
-
     index.add(
         embeddings
     )
 
-
-
     file_id = generate_file_id(
         filename
     )
-
-
 
     index_path = os.path.join(
         VECTOR_FOLDER,
         file_id + ".index"
     )
 
-
     chunks_path = os.path.join(
         VECTOR_FOLDER,
         file_id + ".pkl"
     )
 
-
-
     print("File ID:", file_id)
 
     print("Index:", index_path)
-
-
 
     faiss.write_index(
         index,
         index_path
     )
-
-
 
     # pickle stores list of {"text":..., "page":...} dicts
     with open(
@@ -295,26 +262,19 @@ def create_vector_store(filename):
             f
         )
 
-
-
     print("تم إنشاء Vector Store ✅")
-
 
     print(
         "هل الـ Index موجود؟",
         os.path.exists(index_path)
     )
 
-
     print(
         "هل الـ PKL موجود؟",
         os.path.exists(chunks_path)
     )
 
-
-
     return True
-
 
 
 # ---------------------------------------------------------------------------

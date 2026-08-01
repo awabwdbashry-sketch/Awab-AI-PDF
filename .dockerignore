@@ -1,11 +1,12 @@
 __pycache__/
 *.pyc
 *.pyo
+.git
+.gitignore
 .env
-.venv/
+.venv
 venv/
 *.db
-
 app/uploads/*.pdf
 app/uploads/texts/*.json
 app/uploads/vectors/*.index
@@ -14,3 +15,5 @@ app/uploads/exports/*
 !app/uploads/texts/.gitkeep
 !app/uploads/vectors/.gitkeep
 !app/uploads/exports/.gitkeep
+README_UPGRADE.md
+README_DEPLOY.md

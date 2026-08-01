@@ -51,42 +51,48 @@ app = FastAPI()
 
 
 
+# ---------------------------------------------------------------------------
+# DEPLOYMENT FIX: all folders below are now built from this file's own
+# location (BASE_DIR = the "app" directory) instead of plain relative
+# strings like "app/static". Relative strings only resolve correctly if the
+# process is started with its working directory set to the project root -
+# that's not guaranteed on every platform/start command, and was the root
+# cause of static/template/upload files not being found in some deployment
+# setups. Using __file__ makes this correct regardless of where the process
+# is launched from (local run, Docker, Railway, etc.).
+# ---------------------------------------------------------------------------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # .../app
+
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
+
+UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
+TEXT_FOLDER = os.path.join(BASE_DIR, "uploads", "texts")
+EXPORT_FOLDER = os.path.join(BASE_DIR, "uploads", "exports")
+
+
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(TEXT_FOLDER, exist_ok=True)
+os.makedirs(EXPORT_FOLDER, exist_ok=True)
+
+
 app.mount(
     "/static",
-    StaticFiles(directory="app/static"),
+    StaticFiles(directory=STATIC_DIR),
     name="static"
 )
 
 
 app.mount(
     "/uploads",
-    StaticFiles(directory="app/uploads"),
+    StaticFiles(directory=UPLOAD_FOLDER),
     name="uploads"
 )
 
 
 
 templates = Jinja2Templates(
-    directory="app/templates"
-)
-
-
-
-UPLOAD_FOLDER = "app/uploads"
-
-TEXT_FOLDER = "app/uploads/texts"
-
-
-
-os.makedirs(
-    UPLOAD_FOLDER,
-    exist_ok=True
-)
-
-
-os.makedirs(
-    TEXT_FOLDER,
-    exist_ok=True
+    directory=TEMPLATES_DIR
 )
 
 
@@ -972,15 +978,14 @@ def export_chat(request: Request, conversation_id: int, format: str = "md"):
 
     messages = get_chat_history(session_id, conversation_id)
 
-    export_dir = "app/uploads/exports"
-    os.makedirs(export_dir, exist_ok=True)
+    os.makedirs(EXPORT_FOLDER, exist_ok=True)
 
     format = format.lower()
 
     if format == "json":
 
         filename = _export_filename(conversation, "json")
-        path = os.path.join(export_dir, filename)
+        path = os.path.join(EXPORT_FOLDER, filename)
 
         with open(path, "w", encoding="utf-8") as f:
             json.dump({
@@ -994,7 +999,7 @@ def export_chat(request: Request, conversation_id: int, format: str = "md"):
     if format == "txt":
 
         filename = _export_filename(conversation, "txt")
-        path = os.path.join(export_dir, filename)
+        path = os.path.join(EXPORT_FOLDER, filename)
 
         with open(path, "w", encoding="utf-8") as f:
             f.write(_render_txt_export(conversation, messages))
@@ -1004,7 +1009,7 @@ def export_chat(request: Request, conversation_id: int, format: str = "md"):
     if format == "pdf":
 
         filename = _export_filename(conversation, "pdf")
-        path = os.path.join(export_dir, filename)
+        path = os.path.join(EXPORT_FOLDER, filename)
 
         try:
 
@@ -1057,7 +1062,7 @@ def export_chat(request: Request, conversation_id: int, format: str = "md"):
     # default: markdown
 
     filename = _export_filename(conversation, "md")
-    path = os.path.join(export_dir, filename)
+    path = os.path.join(EXPORT_FOLDER, filename)
 
     with open(path, "w", encoding="utf-8") as f:
         f.write(_render_markdown_export(conversation, messages))

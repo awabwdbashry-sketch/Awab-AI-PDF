@@ -504,24 +504,3 @@ button:hover{
     border-color:#007bff;
 
 }
-.footer-powered{
-    width:100%;
-    text-align:center;
-    padding:18px 15px;
-    margin-top:20px;
-    font-size:14px;
-    font-weight:600;
-    border-top:1px solid rgba(128,128,128,.2);
-    color:var(--footer-text,#666);
-    transition:.3s;
-}
-
-/* الوضع النهاري */
-body{
-    --footer-text:#666;
-}
-
-/* الوضع الليلي */
-body.dark{
-    --footer-text:#cfcfcf;
-}

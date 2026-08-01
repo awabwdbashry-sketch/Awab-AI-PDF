@@ -28,9 +28,15 @@ import sqlite3
 # against an old database. Nothing is ever deleted.
 # ---------------------------------------------------------------------------
 
-DB_FOLDER = "app/database"
-DB_PATH = os.path.join(DB_FOLDER, "chat_history.db")
+# DEPLOYMENT FIX: derive the DB path from this file's own location instead
+# of a plain relative string ("app/database"), which only resolved
+# correctly if the process's working directory happened to be the project
+# root. This makes the database path correct no matter what directory the
+# app is started from (local run, Docker, Railway/nixpacks, etc.).
+APP_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # .../app
 
+DB_FOLDER = os.path.join(APP_DIR, "database")
+DB_PATH = os.path.join(DB_FOLDER, "chat_history.db")
 
 
 def get_connection():
@@ -45,7 +51,6 @@ def get_connection():
     conn.execute("PRAGMA foreign_keys = ON")
 
     return conn
-
 
 
 # ---------------------------------------------------------------------------
@@ -107,7 +112,6 @@ CHAT_MESSAGES_COLUMNS = {
 }
 
 
-
 def table_exists(cursor, table_name):
 
     cursor.execute(
@@ -121,7 +125,6 @@ def table_exists(cursor, table_name):
     return cursor.fetchone() is not None
 
 
-
 def get_existing_columns(cursor, table_name):
 
     cursor.execute(
@@ -129,7 +132,6 @@ def get_existing_columns(cursor, table_name):
     )
 
     return {row["name"] for row in cursor.fetchall()}
-
 
 
 def migrate_table_columns(cursor, table_name, expected_columns):
@@ -161,7 +163,6 @@ def migrate_table_columns(cursor, table_name, expected_columns):
         cursor.execute(
             f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_def}"
         )
-
 
 
 # ---------------------------------------------------------------------------
@@ -224,7 +225,6 @@ def backfill_conversations(cursor):
             f"🔧 Migration: backfilled conversation #{conversation_id} "
             f"for '{filename}' (session {session_id[:8]}...)"
         )
-
 
 
 def init_db():
@@ -328,7 +328,6 @@ def init_db():
     conn.close()
 
 
-
 # =============================================================================
 # Sessions
 # =============================================================================
@@ -350,7 +349,6 @@ def ensure_session(session_id):
     conn.close()
 
 
-
 def set_current_file(session_id, filename):
     """Kept for backward compatibility with older call sites / templates."""
 
@@ -366,7 +364,6 @@ def set_current_file(session_id, filename):
 
     conn.commit()
     conn.close()
-
 
 
 def get_current_file(session_id):
@@ -391,7 +388,6 @@ def get_current_file(session_id):
     return ""
 
 
-
 def set_current_conversation(session_id, conversation_id):
 
     ensure_session(session_id)
@@ -406,7 +402,6 @@ def set_current_conversation(session_id, conversation_id):
 
     conn.commit()
     conn.close()
-
 
 
 def get_current_conversation_id(session_id):
@@ -431,7 +426,6 @@ def get_current_conversation_id(session_id):
     return None
 
 
-
 def clear_current_file(session_id):
 
     ensure_session(session_id)
@@ -452,7 +446,6 @@ def clear_current_file(session_id):
     conn.close()
 
 
-
 def set_theme(session_id, theme):
 
     ensure_session(session_id)
@@ -467,7 +460,6 @@ def set_theme(session_id, theme):
 
     conn.commit()
     conn.close()
-
 
 
 def get_theme(session_id):
@@ -490,7 +482,6 @@ def get_theme(session_id):
         return row["theme"]
 
     return "dark"
-
 
 
 # =============================================================================
@@ -520,7 +511,6 @@ def create_folder(session_id, name):
     return folder_id
 
 
-
 def rename_folder(session_id, folder_id, new_name):
 
     new_name = (new_name or "").strip()
@@ -538,7 +528,6 @@ def rename_folder(session_id, folder_id, new_name):
 
     conn.commit()
     conn.close()
-
 
 
 def delete_folder(session_id, folder_id):
@@ -569,7 +558,6 @@ def delete_folder(session_id, folder_id):
     conn.close()
 
 
-
 def toggle_folder_collapsed(session_id, folder_id):
 
     conn = get_connection()
@@ -594,7 +582,6 @@ def toggle_folder_collapsed(session_id, folder_id):
         conn.commit()
 
     conn.close()
-
 
 
 def get_folders(session_id):
@@ -624,7 +611,6 @@ def get_folders(session_id):
     ]
 
 
-
 def move_conversation_to_folder(session_id, conversation_id, folder_id):
     """folder_id can be None to un-file the conversation."""
 
@@ -642,7 +628,6 @@ def move_conversation_to_folder(session_id, conversation_id, folder_id):
 
     conn.commit()
     conn.close()
-
 
 
 # =============================================================================
@@ -670,7 +655,6 @@ def create_conversation(session_id, title, folder_id=None):
     return conversation_id
 
 
-
 def touch_conversation(conversation_id):
     """Bumps updated_at - called whenever a message is added, so the
     sidebar's "most recent activity first" ordering stays accurate."""
@@ -685,7 +669,6 @@ def touch_conversation(conversation_id):
 
     conn.commit()
     conn.close()
-
 
 
 def rename_conversation(session_id, conversation_id, new_title):
@@ -709,7 +692,6 @@ def rename_conversation(session_id, conversation_id, new_title):
 
     conn.commit()
     conn.close()
-
 
 
 def set_conversation_title_if_default(conversation_id, generated_title):
@@ -759,7 +741,6 @@ def set_conversation_title_if_default(conversation_id, generated_title):
     conn.close()
 
 
-
 def pin_conversation(session_id, conversation_id, pinned=True):
 
     conn = get_connection()
@@ -778,7 +759,6 @@ def pin_conversation(session_id, conversation_id, pinned=True):
     conn.close()
 
 
-
 def add_file_to_conversation(conversation_id, filename, total_pages=None, file_size=None):
 
     conn = get_connection()
@@ -794,7 +774,6 @@ def add_file_to_conversation(conversation_id, filename, total_pages=None, file_s
 
     conn.commit()
     conn.close()
-
 
 
 def get_conversation_files(conversation_id):
@@ -819,7 +798,6 @@ def get_conversation_files(conversation_id):
     conn.close()
 
     return [dict(r) for r in rows]
-
 
 
 def get_conversation(session_id, conversation_id):
@@ -851,7 +829,6 @@ def get_conversation(session_id, conversation_id):
     return conversation
 
 
-
 def get_conversation_by_filename(session_id, filename):
     """
     Finds the (most recently touched) conversation that contains this
@@ -881,7 +858,6 @@ def get_conversation_by_filename(session_id, filename):
     conn.close()
 
     return row["id"] if row else None
-
 
 
 # ---------------------------------------------------------------------------
@@ -945,7 +921,6 @@ def get_conversations(session_id):
     return conversations
 
 
-
 def delete_conversation(session_id, conversation_id):
     """
     Deletes the conversation, its chat_messages, and its
@@ -990,12 +965,10 @@ def delete_conversation(session_id, conversation_id):
     conn.close()
 
 
-
 def delete_conversations_bulk(session_id, conversation_ids):
 
     for conversation_id in conversation_ids:
         delete_conversation(session_id, conversation_id)
-
 
 
 # =============================================================================
@@ -1027,7 +1000,6 @@ def save_message(session_id, conversation_id, filename, role, text, pages=None):
 
     if conversation_id:
         touch_conversation(conversation_id)
-
 
 
 def get_chat_history(session_id, conversation_id):
@@ -1086,7 +1058,6 @@ def get_chat_history(session_id, conversation_id):
     return messages
 
 
-
 def count_user_messages(session_id, conversation_id):
     """Used to decide whether this is the FIRST user message in a
     conversation (auto-title trigger)."""
@@ -1106,7 +1077,6 @@ def count_user_messages(session_id, conversation_id):
     conn.close()
 
     return row["c"] if row else 0
-
 
 
 # ---------------------------------------------------------------------------
@@ -1140,7 +1110,6 @@ def search_conversations(session_id, query):
             results.append(conv)
 
     return results
-
 
 
 # Auto-create/migrate the database and tables as soon as this module is

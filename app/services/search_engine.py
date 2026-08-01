@@ -12,8 +12,12 @@ from app.ai.gemini import ask_gemini
 MODEL = None
 
 
-VECTOR_FOLDER = "app/uploads/vectors"
+# DEPLOYMENT FIX: absolute path derived from this file's own location
+# instead of a relative string that depended on the process's working
+# directory (see the same fix / explanation in vector_store.py).
+APP_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # .../app
 
+VECTOR_FOLDER = os.path.join(APP_DIR, "uploads", "vectors")
 
 
 def get_model():
@@ -33,9 +37,6 @@ def get_model():
     return MODEL
 
 
-
-
-
 def clean_filename(filename):
 
     filename = os.path.basename(filename).strip()
@@ -51,9 +52,6 @@ def clean_filename(filename):
     return filename
 
 
-
-
-
 def generate_file_id(filename):
 
     filename = clean_filename(filename)
@@ -61,9 +59,6 @@ def generate_file_id(filename):
     return hashlib.md5(
         filename.encode("utf-8")
     ).hexdigest()
-
-
-
 
 
 def normalize_arabic_text(text):
@@ -80,9 +75,6 @@ def normalize_arabic_text(text):
     return text.strip()
 
 
-
-
-
 MIN_SIMILARITY = 0.35
 
 TOP_K = 5
@@ -92,8 +84,6 @@ TOP_K = 5
 # crowded out by a mediocre-but-numerous file), then keep the best
 # MULTI_FILE_BEST_N overall for the final context sent to Gemini.
 MULTI_FILE_BEST_N = 5
-
-
 
 
 def _load_file_index(filename):
@@ -129,7 +119,6 @@ def _load_file_index(filename):
         print(f"⚠️ تعذر تحميل بيانات الملف {filename}:", e)
 
         return None, None
-
 
 
 # ---------------------------------------------------------------------------
@@ -225,7 +214,6 @@ def gather_context(filenames, question):
     return context, sources[:6]
 
 
-
 # ---------------------------------------------------------------------------
 # search_in_files() ALWAYS returns exactly this shape:
 #
@@ -286,7 +274,6 @@ def search_in_files(filenames, question):
         }
 
 
-
 # ---------------------------------------------------------------------------
 # search_in_text() ALWAYS returns exactly this shape, so main.py can rely
 # on it without extra parsing:
@@ -303,9 +290,7 @@ def search_in_files(filenames, question):
 # ---------------------------------------------------------------------------
 def search_in_text(filename, question):
 
-
     filename = clean_filename(filename)
-
 
     print("=" * 60)
     print("🚀 دخلنا search_in_text")
@@ -313,27 +298,17 @@ def search_in_text(filename, question):
     print("السؤال:", question)
     print("=" * 60)
 
-
-
-
     file_id = generate_file_id(filename)
-
-
 
     index_path = os.path.join(
         VECTOR_FOLDER,
         file_id + ".index"
     )
 
-
     chunks_path = os.path.join(
         VECTOR_FOLDER,
         file_id + ".pkl"
     )
-
-
-
-
 
     if not os.path.exists(index_path):
 
@@ -343,8 +318,6 @@ def search_in_text(filename, question):
             "pages": []
         }
 
-
-
     if not os.path.exists(chunks_path):
 
         return {
@@ -353,17 +326,9 @@ def search_in_text(filename, question):
             "pages": []
         }
 
-
-
-
-
     index = faiss.read_index(
         index_path
     )
-
-
-
-
 
     with open(
         chunks_path,
@@ -372,30 +337,14 @@ def search_in_text(filename, question):
 
         chunks = pickle.load(f)
 
-
-
-
-
     print(
         "عدد الأجزاء:",
         len(chunks)
     )
 
-
-
-
-
     model = get_model()
 
-
-
-
-
     normalized_question = normalize_arabic_text(question)
-
-
-
-
 
     question_vector = model.encode(
         [normalized_question],
@@ -403,40 +352,22 @@ def search_in_text(filename, question):
         normalize_embeddings=True
     ).astype("float32")
 
-
-
-
-
     k = min(
         TOP_K,
         len(chunks)
     )
-
-
-
-
 
     scores, indices = index.search(
         question_vector,
         k
     )
 
-
-
-
-
     print(
         "Scores:",
         scores
     )
 
-
-
-
-
     candidates = []
-
-
 
     for idx, score in zip(indices[0], scores[0]):
 
@@ -446,13 +377,7 @@ def search_in_text(filename, question):
                 (idx, score)
             )
 
-
-
-
-
     relevant = []
-
-
 
     for idx, score in candidates:
 
@@ -462,56 +387,32 @@ def search_in_text(filename, question):
                 (idx, score)
             )
 
-
-
-
-
     if not relevant and candidates:
 
         relevant.append(
             max(
                 candidates,
-                key=lambda x:x[1]
+                key=lambda x: x[1]
             )
         )
 
-
-
-
-
     relevant = sorted(
         relevant,
-        key=lambda x:x[1],
+        key=lambda x: x[1],
         reverse=True
     )
 
-
-
-
-
     best_results = relevant[:3]
-
-
-
-
 
     context = ""
 
     used_pages = []
 
-
-
-
-
     for idx, score in best_results:
-
 
         chunk = chunks[idx]
 
-
         page = chunk["page"]
-
-
 
         context += f"""
 
@@ -521,21 +422,11 @@ def search_in_text(filename, question):
 
 """
 
-
-
         used_pages.append(page)
-
-
-
-
 
     print("=" * 60)
     print(context[:1000])
     print("=" * 60)
-
-
-
-
 
     if not context.strip():
 
@@ -545,26 +436,17 @@ def search_in_text(filename, question):
             "pages": []
         }
 
-
-
-
-
-
-
     try:
-
 
         answer = ask_gemini(
             context,
             question
         )
 
-
         # Defensive: guarantee a plain string even if ask_gemini ever
         # returns something else (e.g. None), so main.py / chat.html
         # never has to deal with a non-string "answer".
         answer = str(answer) if answer is not None else ""
-
 
         return {
 
@@ -578,19 +460,12 @@ def search_in_text(filename, question):
 
         }
 
-
-
-
-
-
     except Exception as e:
-
 
         print(
             "خطأ Gemini:",
             e
         )
-
 
         return {
 

@@ -36,7 +36,6 @@ def extract_text(pdf_path):
     return pages
 
 
-
 # ---------------------------------------------------------------------------
 # Persists the structured page data to disk as JSON so vector_store.py can
 # read it back in during create_vector_store().

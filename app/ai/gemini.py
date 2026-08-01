@@ -1,36 +1,69 @@
 import os
 
-from dotenv import load_dotenv
+# python-dotenv is a LOCAL-ONLY convenience: it loads variables from a
+# ".env" file into the process environment when one exists (developer's
+# machine). On Railway there is no ".env" file in the container - Railway
+# injects environment variables (GOOGLE_API_KEY, PORT, etc.) directly into
+# the process environment - so load_dotenv() simply finds nothing to load
+# and is a harmless no-op there. It also never overrides variables that
+# are already set, so it can never clobber Railway's env vars even if a
+# stray .env file were present. Import is wrapped defensively so a missing
+# package/.env file can never crash startup either.
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception as e:
+    print("⚠️ dotenv not loaded (fine on Railway / production):", e)
+
 from google import genai
-
-
-load_dotenv()
-
-
-API_KEY = os.getenv("GOOGLE_API_KEY")
-
-
-print("=" * 50)
-print("API KEY موجود؟", API_KEY is not None)
-
-
-if API_KEY:
-    print("بداية المفتاح:", API_KEY[:10] + "...")
-else:
-    print("لم يتم العثور على GOOGLE_API_KEY")
-
-
-print("=" * 50)
-
-
-
-client = genai.Client(
-    api_key=API_KEY
-)
 
 
 MODEL_NAME = "gemini-flash-lite-latest"
 
+
+# ---------------------------------------------------------------------------
+# IMPORTANT (deployment fix): the Gemini client is NEVER created at import
+# time anymore. Creating it at import time meant that simply importing this
+# module (which main.py does indirectly through search_engine.py) would try
+# to build an API client before FastAPI had even started - and before we
+# could be sure GOOGLE_API_KEY was actually available in the environment.
+# On some platforms/import orders that turned a missing/late env var into a
+# hard crash at process startup instead of a normal, recoverable runtime
+# error.
+#
+# Now the client is created lazily, on first actual use, via get_client().
+# The API key is re-read from the environment every time get_client() is
+# called the first time, so it always sees whatever Railway injected.
+# ---------------------------------------------------------------------------
+_client = None
+_client_error_logged = False
+
+
+def get_api_key():
+    return os.getenv("GOOGLE_API_KEY")
+
+
+def get_client():
+
+    global _client, _client_error_logged
+
+    if _client is not None:
+        return _client
+
+    api_key = get_api_key()
+
+    if not api_key and not _client_error_logged:
+        print("=" * 50)
+        print("⚠️ لم يتم العثور على GOOGLE_API_KEY في متغيرات البيئة")
+        print("=" * 50)
+        _client_error_logged = True
+
+    # google-genai will happily raise a clear error the moment it's asked
+    # to actually call the API with no/invalid key - which is what we want:
+    # a normal per-request error, not a process-level crash at import time.
+    _client = genai.Client(api_key=api_key)
+
+    return _client
 
 
 def build_prompt(context, question):
@@ -72,7 +105,6 @@ def build_prompt(context, question):
 """
 
 
-
 def ask_gemini(context, question):
     """
     UNCHANGED non-streaming call - kept exactly as before so nothing that
@@ -83,32 +115,25 @@ def ask_gemini(context, question):
 
     try:
 
-
         print("📤 جاري إرسال الطلب إلى Gemini...")
 
+        client = get_client()
 
         response = client.models.generate_content(
             model=MODEL_NAME,
             contents=prompt
         )
 
-
         print("✅ تم استلام الرد")
-
 
         return response.text
 
-
-
     except Exception as e:
-
 
         print("❌ Gemini Error:")
         print(e)
 
-
         return f"حدث خطأ: {e}"
-
 
 
 def ask_gemini_stream(context, question):
@@ -131,6 +156,8 @@ def ask_gemini_stream(context, question):
 
         print("📤 جاري إرسال طلب Streaming إلى Gemini...")
 
+        client = get_client()
+
         stream = client.models.generate_content_stream(
             model=MODEL_NAME,
             contents=prompt
@@ -151,7 +178,6 @@ def ask_gemini_stream(context, question):
         print(e)
 
         yield f"حدث خطأ: {e}"
-
 
 
 def generate_conversation_title(question, answer=""):
@@ -182,6 +208,8 @@ def generate_conversation_title(question, answer=""):
 """
 
     try:
+
+        client = get_client()
 
         response = client.models.generate_content(
             model=MODEL_NAME,
