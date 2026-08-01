@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>{{ title }}</title>
+
+    <link rel="stylesheet" href="/static/css/style.css">
+
+</head>
+
+
+<body>
+
+
+<div class="container">
+
+
+    <header class="hero">
+
+
+        <div class="logo">
+            📄 Awab AI
+        </div>
+
+
+        <h1>
+            مساعدك الذكي لملفات PDF
+        </h1>
+
+
+        <p>
+            ارفع ملف PDF واسأل أي سؤال عنه،
+            والذكاء الاصطناعي سيجيبك من داخل الملف.
+        </p>
+
+
+    </header>
+
+
+
+    <section class="upload-box">
+
+
+        <div class="upload-icon">
+            📂
+        </div>
+
+
+        <h2>
+            ارفع ملف PDF الخاص بك
+        </h2>
+
+
+        <p>
+            اسحب الملف وأفلته هنا
+            <br>
+            أو اختره من جهازك
+        </p>
+
+         <section class="upload-box">
+
+    <div class="upload-icon">
+        📂
+    </div>
+
+    <h2>
+        ارفع ملف PDF الخاص بك
+    </h2>
+
+    <p>
+        اختر ملف PDF من جهازك
+    </p>
+
+
+    <form 
+        action="/upload"
+        method="post"
+        enctype="multipart/form-data"
+    >
+
+        <input
+            type="file"
+            name="file"
+            accept=".pdf"
+            required
+        >
+
+
+        <br><br>
+
+
+        <button type="submit">
+            رفع الملف 🚀
+        </button>
+
+
+    </form>
+
+
+</section>
+
+
+    </section>
+
+
+
+
+
+    <section class="features">
+
+
+        <div class="card">
+
+
+            <h3>
+                🤖 محادثة ذكية
+            </h3>
+
+
+            <p>
+                اسأل أي سؤال واحصل على إجابة
+                من محتوى ملفك.
+            </p>
+
+
+        </div>
+
+
+
+
+
+        <div class="card">
+
+
+            <h3>
+                📚 بحث ذكي
+            </h3>
+
+
+            <p>
+                ابحث داخل ملفات PDF بسرعة
+                باستخدام الذكاء الاصطناعي.
+            </p>
+
+
+        </div>
+
+
+
+
+
+        <div class="card">
+
+
+            <h3>
+                ⚡ تحليل سريع
+            </h3>
+
+
+            <p>
+                الذكاء الاصطناعي يفهم ملفاتك
+                خلال ثوانٍ.
+            </p>
+
+
+        </div>
+
+
+
+    </section>
+
+
+
+</div>
+
+
+
+</body>
+
+</html>

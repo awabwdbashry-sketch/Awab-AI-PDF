@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual Environment
+venv/
+
+# Environment
+.env
+
+# Database
+*.db
+
+# Uploaded files
+app/uploads/*.pdf
+
+# Generated files
+app/uploads/texts/*.json
+app/uploads/vectors/*.index
+app/uploads/vectors/*.pkl
+
+# Keep folders
+!app/uploads/texts/.gitkeep
+!app/uploads/vectors/.gitkeep

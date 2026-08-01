@@ -1,0 +1,527 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
+
+
+
+*{
+
+    box-sizing:border-box;
+    margin:0;
+    padding:0;
+
+}
+
+
+
+body{
+
+
+    min-height:100vh;
+
+    background:
+    radial-gradient(circle at top,#243b55,#000);
+
+
+    color:white;
+
+    font-family:'Cairo',sans-serif;
+
+    direction:rtl;
+
+
+}
+
+
+
+
+.container{
+
+
+    width:90%;
+
+    max-width:1100px;
+
+    margin:auto;
+
+
+}
+
+
+
+
+/* HERO */
+
+
+.hero{
+
+
+    text-align:center;
+
+    padding:70px 20px 40px;
+
+
+}
+
+
+
+
+.logo{
+
+
+    font-size:32px;
+
+    font-weight:700;
+
+    color:#00e5ff;
+
+    margin-bottom:25px;
+
+
+}
+
+
+
+
+.hero h1{
+
+
+    font-size:45px;
+
+    margin-bottom:20px;
+
+
+}
+
+
+
+
+.hero p{
+
+
+    color:#ddd;
+
+    font-size:20px;
+
+    line-height:2;
+
+
+}
+
+
+
+
+
+/* UPLOAD BOX */
+
+
+.upload-box{
+
+
+    margin:30px auto;
+
+    padding:50px;
+
+
+    text-align:center;
+
+
+    background:
+
+    rgba(255,255,255,0.08);
+
+
+
+    border:
+
+    2px dashed #00e5ff;
+
+
+
+    border-radius:25px;
+
+
+
+    backdrop-filter:blur(10px);
+
+
+
+}
+
+
+
+
+
+.upload-icon{
+
+
+    font-size:70px;
+
+
+}
+
+
+
+
+
+.upload-box h2{
+
+
+    margin:20px 0;
+
+
+}
+
+
+
+
+
+.upload-box p{
+
+
+    color:#ddd;
+
+    line-height:2;
+
+
+}
+
+
+
+
+
+input{
+
+
+    margin:25px;
+
+    color:white;
+
+
+}
+
+
+
+
+
+button{
+
+
+    background:#00e5ff;
+
+
+    border:none;
+
+
+    padding:15px 40px;
+
+
+    border-radius:30px;
+
+
+    font-size:18px;
+
+
+    font-family:'Cairo',sans-serif;
+
+
+    cursor:pointer;
+
+
+    transition:.3s;
+
+
+}
+
+
+
+
+
+button:hover{
+
+
+    transform:scale(1.05);
+
+
+}
+
+
+
+
+/* FEATURES */
+
+
+.features{
+
+
+    display:grid;
+
+
+    grid-template-columns:
+
+    repeat(auto-fit,minmax(250px,1fr));
+
+
+    gap:25px;
+
+
+    margin-top:40px;
+
+
+}
+
+
+
+
+
+.card{
+
+
+    background:
+
+    rgba(255,255,255,.08);
+
+
+    padding:30px;
+
+
+    border-radius:20px;
+
+
+    text-align:center;
+
+
+}
+
+
+
+
+
+.card h3{
+
+
+    color:#00e5ff;
+
+
+    margin-bottom:15px;
+
+
+}
+
+
+
+
+
+.card p{
+
+
+    color:#ddd;
+
+
+    line-height:2;
+
+
+}
+.success-box {
+
+    text-align: center;
+
+    max-width: 600px;
+
+    margin: 80px auto;
+
+}
+
+
+.success-box .upload-icon {
+
+    font-size: 70px;
+
+    margin-bottom: 20px;
+
+}
+
+
+.success-box h1 {
+
+    font-size: 32px;
+
+    margin-bottom: 20px;
+
+}
+
+
+.success-box p {
+
+    font-size: 18px;
+
+    opacity: 0.8;
+
+    margin-bottom: 30px;
+
+}
+
+
+.success-box button {
+
+    background: linear-gradient(
+        135deg,
+        #d4af37,
+        #f5d76e
+    );
+
+    border: none;
+
+    padding: 15px 35px;
+
+    border-radius: 12px;
+
+    font-size: 18px;
+
+    cursor: pointer;
+
+    color: #111;
+
+    font-weight: bold;
+
+}
+.chat-box {
+
+    max-width: 800px;
+    margin: 60px auto;
+}
+
+
+.chat-area {
+
+    background: #111;
+
+    min-height: 250px;
+
+    border-radius: 15px;
+
+    padding: 20px;
+
+    margin: 25px 0;
+
+}
+
+
+.message {
+
+    padding: 15px;
+
+    border-radius: 12px;
+
+    margin-bottom: 15px;
+
+    line-height: 1.8;
+
+}
+
+
+.bot {
+
+    background: #1f1f1f;
+
+    color: white;
+
+}
+
+
+.chat-box input {
+
+    width: 70%;
+
+    padding: 15px;
+
+    border-radius: 10px;
+
+    border: none;
+
+}
+
+
+.chat-box button {
+
+    padding: 15px 25px;
+
+    border: none;
+
+    border-radius: 10px;
+
+    background: #d4af37;
+
+    cursor: pointer;
+
+    font-weight: bold;
+
+}
+.chat-input {
+
+    background: white;
+
+    color: black;
+
+    font-size: 16px;
+
+    width: 70%;
+
+    padding: 15px;
+
+    border-radius: 10px;
+
+    border: none;
+
+}
+.question-input {
+
+    width:80%;
+    padding:15px;
+
+    font-size:18px;
+
+    color:#000 !important;
+
+    background:#fff !important;
+
+    border:2px solid #333;
+
+    border-radius:10px;
+
+    outline:none;
+
+}
+
+
+.question-input::placeholder {
+
+    color:#777;
+
+}
+
+
+.question-input:focus {
+
+    border-color:#007bff;
+
+}
+.footer-powered{
+    width:100%;
+    text-align:center;
+    padding:18px 15px;
+    margin-top:20px;
+    font-size:14px;
+    font-weight:600;
+    border-top:1px solid rgba(128,128,128,.2);
+    color:var(--footer-text,#666);
+    transition:.3s;
+}
+
+/* الوضع النهاري */
+body{
+    --footer-text:#666;
+}
+
+/* الوضع الليلي */
+body.dark{
+    --footer-text:#cfcfcf;
+}

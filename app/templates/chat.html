@@ -1,0 +1,2259 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="{{ theme or 'dark' }}">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+<title>Awab AI Chat</title>
+
+<link rel="stylesheet" href="/static/css/style.css">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<!-- Markdown rendering / code highlighting / sanitization for chat bubbles (feature 12) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.5/purify.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" id="hljs-theme">
+
+
+<style>
+
+/* =============================================================
+   Design tokens - everything below reads colors from these CSS
+   variables, so the dark/light theme toggle (feature 10) is just
+   swapping the [data-theme] attribute on <html>. Dark is default,
+   matching the app's original look.
+   ============================================================= */
+
+:root,
+html[data-theme="dark"]{
+
+    --bg:#0e0e10;
+    --bg-elevated:#171717;
+    --bg-elevated-2:#1f1f1f;
+    --bg-card:#1a1a1c;
+    --bg-input:#212121;
+
+    --text:#ececec;
+    --text-secondary:#9a9a9a;
+    --text-faint:#6b6b6b;
+
+    --border:#2e2e2e;
+    --border-soft:#242424;
+
+    --accent:#00e5ff;
+    --accent-strong:#00b8cc;
+    --accent-contrast:#04252b;
+
+    --user-bubble-bg:linear-gradient(135deg,#1f5fb0,#153c73);
+    --user-bubble-text:#eaf3ff;
+
+    --ai-bubble-bg:#17181a;
+    --ai-bubble-text:#f1f1f1;
+
+    --danger:#ff6b6b;
+    --danger-bg:#3a1f1f;
+
+    --success:#3ddc84;
+
+    --shadow-soft:0 6px 24px rgba(0,0,0,0.35);
+    --shadow-lift:0 12px 40px rgba(0,0,0,0.45);
+
+    --glass-bg:rgba(255,255,255,0.05);
+    --glass-border:rgba(255,255,255,0.08);
+
+    color-scheme:dark;
+}
+
+html[data-theme="light"]{
+
+    --bg:#f4f5f7;
+    --bg-elevated:#ffffff;
+    --bg-elevated-2:#f0f1f3;
+    --bg-card:#ffffff;
+    --bg-input:#ffffff;
+
+    --text:#191919;
+    --text-secondary:#5b5b5b;
+    --text-faint:#9a9a9a;
+
+    --border:#e4e4e7;
+    --border-soft:#ececee;
+
+    --accent:#0091a8;
+    --accent-strong:#00707f;
+    --accent-contrast:#e6faff;
+
+    --user-bubble-bg:linear-gradient(135deg,#dbeafe,#c3ddfb);
+    --user-bubble-text:#0b2c52;
+
+    --ai-bubble-bg:#ffffff;
+    --ai-bubble-text:#1c1c1c;
+
+    --danger:#e0433c;
+    --danger-bg:#fdeaea;
+
+    --success:#1fa971;
+
+    --shadow-soft:0 6px 24px rgba(20,20,30,0.08);
+    --shadow-lift:0 16px 40px rgba(20,20,30,0.14);
+
+    --glass-bg:rgba(255,255,255,0.6);
+    --glass-border:rgba(0,0,0,0.06);
+
+    color-scheme:light;
+}
+
+
+*{
+    box-sizing:border-box;
+}
+
+html, body{
+    height:100%;
+}
+
+body{
+    background:var(--bg);
+    color:var(--text);
+    margin:0;
+    font-family:'Cairo',Arial,sans-serif;
+    transition:background 0.25s ease, color 0.25s ease;
+}
+
+button, input, textarea{
+    font-family:inherit;
+}
+
+::selection{
+    background:var(--accent);
+    color:#04141a;
+}
+
+/* thin, theme-aware scrollbars */
+*{
+    scrollbar-width:thin;
+    scrollbar-color:var(--border) transparent;
+}
+*::-webkit-scrollbar{ width:8px; height:8px; }
+*::-webkit-scrollbar-thumb{ background:var(--border); border-radius:8px; }
+*::-webkit-scrollbar-track{ background:transparent; }
+
+
+/* ============================= Layout ============================= */
+
+.app-layout{
+    display:flex;
+    direction:ltr;
+    height:100vh;
+    overflow:hidden;
+}
+
+
+/* ============================= Sidebar ============================= */
+
+.sidebar{
+    position:static;
+    direction:rtl;
+    width:300px;
+    flex-shrink:0;
+    background:var(--bg-elevated);
+    color:var(--text);
+    display:flex;
+    flex-direction:column;
+    height:100%;
+    transform:none;
+    transition:transform 0.25s ease, background 0.25s ease;
+    z-index:1;
+    border-left:1px solid var(--border-soft);
+}
+
+.sidebar-header{
+    padding:14px 14px 8px 14px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+}
+
+.brand{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-weight:800;
+    font-size:16px;
+    color:var(--text);
+    padding:6px 4px 12px 4px;
+    flex:1;
+}
+
+.brand-dot{
+    width:9px;height:9px;border-radius:50%;
+    background:var(--accent);
+    box-shadow:0 0 12px var(--accent);
+}
+
+.theme-toggle-btn{
+    background:transparent;
+    border:1px solid var(--border);
+    color:var(--text);
+    border-radius:10px;
+    width:36px;height:36px;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+    font-size:16px;
+    transition:background 0.15s ease, transform 0.15s ease;
+    flex-shrink:0;
+}
+.theme-toggle-btn:hover{ background:var(--bg-elevated-2); transform:scale(1.05); }
+
+.sidebar-actions{
+    padding:0 14px 10px 14px;
+    display:flex;
+    gap:8px;
+}
+
+.new-chat-btn, .new-folder-btn{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    background:transparent;
+    color:var(--text);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:11px 12px;
+    font-size:14px;
+    font-weight:700;
+    cursor:pointer;
+    transition:background 0.15s ease, border-color 0.15s ease;
+}
+
+.new-chat-btn{ flex:1.4; }
+.new-folder-btn{ flex:1; }
+
+.new-chat-btn:hover, .new-folder-btn:hover{
+    background:var(--bg-elevated-2);
+    border-color:var(--accent);
+}
+
+.sidebar-search{
+    padding:0 14px 10px 14px;
+    position:relative;
+}
+
+.sidebar-search input{
+    width:100%;
+    padding:10px 36px 10px 12px;
+    border-radius:10px;
+    border:1px solid var(--border);
+    background:var(--bg-input);
+    color:var(--text);
+    font-size:14px;
+    outline:none;
+    transition:border-color 0.15s ease;
+}
+
+.sidebar-search input:focus{
+    border-color:var(--accent);
+}
+
+.sidebar-search .kbd-hint{
+    position:absolute;
+    left:20px;
+    top:50%;
+    transform:translateY(-50%);
+    font-size:11px;
+    color:var(--text-faint);
+    border:1px solid var(--border);
+    padding:2px 6px;
+    border-radius:6px;
+    pointer-events:none;
+}
+
+.bulk-bar{
+    display:none;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    padding:8px 14px;
+    background:var(--bg-elevated-2);
+    border-bottom:1px solid var(--border-soft);
+    font-size:13px;
+}
+.bulk-bar.active{ display:flex; }
+.bulk-bar button{
+    background:var(--danger-bg);
+    color:var(--danger);
+    border:none;
+    border-radius:8px;
+    padding:6px 10px;
+    font-size:12px;
+    cursor:pointer;
+    font-weight:700;
+}
+.bulk-bar .bulk-cancel{
+    background:transparent;
+    color:var(--text-secondary);
+}
+
+.conv-list{
+    flex:1;
+    overflow-y:auto;
+    padding:4px 10px 14px 10px;
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+}
+
+.conv-group-label{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    padding:6px 8px;
+    font-size:12px;
+    font-weight:700;
+    color:var(--text-secondary);
+    cursor:pointer;
+    border-radius:8px;
+    user-select:none;
+}
+.conv-group-label:hover{ background:var(--bg-elevated-2); }
+
+.conv-group-label .chev{
+    transition:transform 0.2s ease;
+    font-size:10px;
+}
+.conv-group-label.collapsed .chev{ transform:rotate(-90deg); }
+
+.folder-actions{
+    margin-inline-start:auto;
+    display:flex;
+    gap:2px;
+    opacity:0;
+    transition:opacity 0.15s ease;
+}
+.conv-group-label:hover .folder-actions{ opacity:1; }
+
+.folder-actions button{
+    background:transparent;
+    border:none;
+    color:var(--text-faint);
+    cursor:pointer;
+    font-size:12px;
+    padding:3px 5px;
+    border-radius:6px;
+}
+.folder-actions button:hover{ background:var(--bg-elevated-2); color:var(--text); }
+
+.conv-group-body{
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+}
+.conv-group-body.collapsed{ display:none; }
+
+.conv-empty{
+    color:var(--text-faint);
+    text-align:center;
+    font-size:13px;
+    padding:16px 10px;
+}
+
+.conv-item{
+    display:flex;
+    align-items:center;
+    gap:2px;
+    border-radius:10px;
+    transition:background 0.15s ease;
+    position:relative;
+}
+
+.conv-item:hover{
+    background:var(--bg-elevated-2);
+}
+
+.conv-item.active{
+    background:var(--bg-elevated-2);
+    box-shadow:inset 2px 0 0 var(--accent);
+}
+
+.conv-checkbox{
+    display:none;
+    margin-inline-start:8px;
+    accent-color:var(--accent);
+    cursor:pointer;
+}
+.select-mode .conv-checkbox{ display:inline-block; }
+
+.conv-link{
+    flex:1;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:9px 8px;
+    cursor:pointer;
+    min-width:0;
+}
+
+.conv-icon{
+    font-size:15px;
+    flex-shrink:0;
+}
+
+.conv-icon.pinned{ color:#ffcc4d; }
+
+.conv-text{
+    display:flex;
+    flex-direction:column;
+    min-width:0;
+    gap:2px;
+    flex:1;
+}
+
+.conv-name{
+    font-size:13.5px;
+    color:var(--text);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    max-width:150px;
+    outline:none;
+}
+.conv-name[contenteditable="true"]{
+    white-space:normal;
+    background:var(--bg-input);
+    border-radius:6px;
+    padding:2px 4px;
+    max-width:none;
+}
+
+.conv-meta-row{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:11px;
+    color:var(--text-faint);
+}
+
+.conv-file-badge{
+    background:var(--bg-elevated);
+    border:1px solid var(--border-soft);
+    border-radius:6px;
+    padding:0 5px;
+    font-size:10px;
+}
+
+.conv-quick-actions{
+    display:flex;
+    gap:1px;
+    flex-shrink:0;
+    padding-inline-end:4px;
+    opacity:0;
+    transition:opacity 0.15s ease;
+}
+.conv-item:hover .conv-quick-actions{ opacity:1; }
+.select-mode .conv-quick-actions{ opacity:1; }
+
+.conv-quick-actions button{
+    background:transparent;
+    border:none;
+    color:var(--text-faint);
+    font-size:13px;
+    padding:6px;
+    border-radius:8px;
+    cursor:pointer;
+    line-height:1;
+}
+.conv-quick-actions button:hover{ background:var(--bg-elevated); color:var(--text); }
+.conv-quick-actions button.conv-delete-btn:hover{ background:var(--danger-bg); color:var(--danger); }
+.conv-quick-actions button.pin-btn.is-pinned{ color:#ffcc4d; }
+
+
+.sidebar-toggle-btn{
+    display:none;
+    position:absolute;
+    top:16px;
+    left:16px;
+    background:var(--glass-bg);
+    backdrop-filter:blur(6px);
+    border:1px solid var(--border);
+    color:var(--text);
+    border-radius:10px;
+    width:38px;
+    height:38px;
+    font-size:18px;
+    cursor:pointer;
+    z-index:5;
+}
+
+.sidebar-overlay{
+    position:fixed;
+    top:0; left:0; right:0; bottom:0;
+    background:rgba(0,0,0,0.5);
+    z-index:40;
+    opacity:0;
+    visibility:hidden;
+    pointer-events:none;
+    transition:opacity 0.25s ease, visibility 0.25s ease;
+}
+
+@media (max-width: 860px){
+
+    .sidebar{
+        position:fixed;
+        z-index:50;
+        top:0; bottom:0; left:0;
+        transform:translateX(-100%);
+        box-shadow:2px 0 30px rgba(0,0,0,0.4);
+        width:86vw;
+        max-width:320px;
+    }
+
+    .sidebar.sidebar-open{ transform:translateX(0); }
+
+    .sidebar-toggle-btn{ display:flex; align-items:center; justify-content:center; }
+
+    .sidebar-overlay.sidebar-open{
+        opacity:1; visibility:visible; pointer-events:auto;
+    }
+}
+
+
+/* ============================ Main content ============================ */
+
+.main-content{
+    direction:rtl;
+    flex:1;
+    min-width:0;
+    height:100%;
+    overflow-y:auto;
+    position:relative;
+}
+
+.chat-container{
+    width:92%;
+    max-width:920px;
+    margin:26px auto;
+    position:relative;
+}
+
+.chat-header{
+    background:linear-gradient(135deg, var(--bg-elevated), var(--bg-elevated-2));
+    border:1px solid var(--border-soft);
+    color:var(--text);
+    padding:22px 20px;
+    border-radius:20px;
+    text-align:center;
+    position:relative;
+    box-shadow:var(--shadow-soft);
+}
+
+.chat-header h1{
+    font-size:22px;
+    margin:0 0 6px 0;
+}
+
+.chat-header p{
+    margin:0;
+    color:var(--text-secondary);
+    font-size:14px;
+}
+
+
+/* ===================== Multi-PDF file card ===================== */
+
+.file-card{
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+    background:var(--bg-card);
+    border:1px solid var(--border-soft);
+    border-radius:18px;
+    box-shadow:var(--shadow-soft);
+    padding:18px 20px;
+    margin-top:18px;
+}
+
+.file-card-top{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+}
+
+.conversation-title-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    min-width:0;
+    flex:1;
+}
+
+.conversation-title{
+    font-size:17px;
+    font-weight:800;
+    color:var(--text);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    outline:none;
+    border-radius:6px;
+    padding:2px 4px;
+}
+.conversation-title[contenteditable="true"]{
+    background:var(--bg-input);
+    white-space:normal;
+}
+
+.icon-btn{
+    background:transparent;
+    border:1px solid transparent;
+    color:var(--text-secondary);
+    border-radius:9px;
+    width:32px;height:32px;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+    font-size:14px;
+    flex-shrink:0;
+    transition:background 0.15s ease, color 0.15s ease;
+}
+.icon-btn:hover{ background:var(--bg-elevated-2); color:var(--text); }
+.icon-btn.is-pinned{ color:#ffcc4d; }
+
+.file-card-actions{
+    display:flex;
+    gap:8px;
+    flex-shrink:0;
+}
+
+.pill-btn{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    background:var(--bg-elevated-2);
+    color:var(--text);
+    border:1px solid var(--border);
+    border-radius:11px;
+    padding:9px 14px;
+    font-size:13px;
+    font-weight:700;
+    cursor:pointer;
+    white-space:nowrap;
+    transition:background 0.2s ease, transform 0.1s ease, border-color .2s ease;
+}
+.pill-btn:hover{ background:var(--bg-elevated); border-color:var(--accent); }
+.pill-btn:active{ transform:scale(0.97); }
+.pill-btn.primary{
+    background:var(--accent);
+    color:var(--accent-contrast);
+    border-color:var(--accent);
+}
+.pill-btn.primary:hover{ background:var(--accent-strong); }
+
+.export-menu-wrap{ position:relative; }
+.export-menu{
+    position:absolute;
+    top:calc(100% + 6px);
+    left:0;
+    background:var(--bg-elevated);
+    border:1px solid var(--border);
+    border-radius:12px;
+    box-shadow:var(--shadow-lift);
+    padding:6px;
+    display:none;
+    flex-direction:column;
+    min-width:160px;
+    z-index:20;
+}
+.export-menu.open{ display:flex; }
+.export-menu a{
+    color:var(--text);
+    text-decoration:none;
+    font-size:13px;
+    padding:8px 10px;
+    border-radius:8px;
+}
+.export-menu a:hover{ background:var(--bg-elevated-2); }
+
+.file-chips{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+}
+
+.file-chip{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:var(--bg-elevated-2);
+    border:1px solid var(--border-soft);
+    border-radius:12px;
+    padding:8px 12px;
+    font-size:12.5px;
+    color:var(--text);
+}
+
+.file-chip .chip-icon{ font-size:15px; }
+
+.file-chip .chip-meta{
+    color:var(--text-faint);
+    font-size:11px;
+}
+
+.file-card-empty{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:14px;
+}
+
+.file-card-empty-text{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    color:var(--text-secondary);
+    font-size:15px;
+}
+
+
+/* ===================== Drag & drop (feature 6/7) ===================== */
+
+.drop-zone-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(0,150,180,0.12);
+    backdrop-filter:blur(3px);
+    z-index:60;
+    display:none;
+    align-items:center;
+    justify-content:center;
+}
+.drop-zone-overlay.active{ display:flex; }
+
+.drop-zone-card{
+    border:3px dashed var(--accent);
+    background:var(--bg-elevated);
+    color:var(--text);
+    border-radius:24px;
+    padding:50px 70px;
+    text-align:center;
+    animation:dropPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes dropPulse{
+    0%,100%{ transform:scale(1); }
+    50%{ transform:scale(1.02); }
+}
+
+.drop-zone-card .drop-icon{ font-size:52px; margin-bottom:10px; }
+
+.upload-progress-wrap{
+    display:none;
+    flex-direction:column;
+    gap:8px;
+    background:var(--bg-elevated-2);
+    border-radius:12px;
+    padding:12px 14px;
+}
+.upload-progress-wrap.active{ display:flex; }
+
+.upload-progress-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-size:12.5px;
+}
+
+.upload-progress-bar-track{
+    flex:1;
+    height:8px;
+    border-radius:6px;
+    background:var(--bg-input);
+    overflow:hidden;
+}
+.upload-progress-bar-fill{
+    height:100%;
+    width:0%;
+    background:linear-gradient(90deg, var(--accent), var(--accent-strong));
+    border-radius:6px;
+    transition:width 0.2s ease;
+}
+.upload-progress-status{ min-width:80px; text-align:left; color:var(--text-secondary); }
+.upload-progress-status.success{ color:var(--success); }
+.upload-progress-status.error{ color:var(--danger); }
+
+
+/* ============================ Chat window ============================ */
+
+.chat-window{
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+    height:60vh;
+    overflow-y:auto;
+    padding:22px;
+    background:var(--bg-card);
+    border:1px solid var(--border-soft);
+    border-radius:18px;
+    margin-top:18px;
+    scroll-behavior:smooth;
+    box-shadow:var(--shadow-soft);
+}
+
+.empty-state{
+    margin:auto;
+    color:var(--text-faint);
+    text-align:center;
+    font-size:16px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:10px;
+}
+.empty-state .empty-icon{ font-size:40px; }
+
+.msg-row{ display:flex; }
+.msg-row.user{ justify-content:flex-end; }
+.msg-row.ai{ justify-content:flex-start; }
+
+.fade-in{
+    opacity:0;
+    animation:fadeInMsg 0.35s ease forwards;
+}
+@keyframes fadeInMsg{
+    from{ opacity:0; transform:translateY(8px); }
+    to{ opacity:1; transform:translateY(0); }
+}
+
+.user-box{
+    background:var(--user-bubble-bg);
+    color:var(--user-bubble-text);
+    padding:14px 16px;
+    border-radius:16px 16px 4px 16px;
+    max-width:75%;
+    font-size:15.5px;
+    line-height:1.7;
+    box-shadow:var(--shadow-soft);
+}
+
+.msg-label{
+    font-size:11px;
+    font-weight:700;
+    opacity:0.7;
+    margin-bottom:4px;
+    display:block;
+}
+
+.ai-box{
+    background:var(--ai-bubble-bg);
+    color:var(--ai-bubble-text);
+    border:1px solid var(--border-soft);
+    padding:16px 18px;
+    border-radius:16px 16px 16px 4px;
+    max-width:82%;
+    font-size:15.5px;
+    line-height:1.8;
+    box-shadow:var(--shadow-soft);
+    position:relative;
+}
+
+.ai-text{ direction:auto; }
+
+/* markdown content inside AI bubbles */
+.ai-text p{ margin:0 0 10px 0; }
+.ai-text p:last-child{ margin-bottom:0; }
+.ai-text ul, .ai-text ol{ margin:8px 0; padding-inline-start:22px; }
+.ai-text li{ margin:4px 0; }
+.ai-text a{ color:var(--accent); }
+.ai-text code{
+    background:var(--bg-elevated-2);
+    padding:2px 6px;
+    border-radius:6px;
+    font-size:0.9em;
+    direction:ltr;
+    display:inline-block;
+}
+.ai-text pre{
+    background:#0b0d10;
+    border-radius:12px;
+    padding:14px;
+    overflow-x:auto;
+    margin:10px 0;
+    direction:ltr;
+    text-align:left;
+}
+.ai-text pre code{
+    background:none;
+    padding:0;
+}
+.ai-text table{
+    border-collapse:collapse;
+    width:100%;
+    margin:10px 0;
+    font-size:0.92em;
+}
+.ai-text th, .ai-text td{
+    border:1px solid var(--border);
+    padding:6px 10px;
+    text-align:right;
+}
+.ai-text th{ background:var(--bg-elevated-2); }
+.ai-text blockquote{
+    border-inline-start:3px solid var(--accent);
+    margin:8px 0;
+    padding:2px 12px;
+    color:var(--text-secondary);
+}
+
+.copy-btn{
+    position:absolute;
+    top:8px;
+    left:8px;
+    background:var(--bg-elevated-2);
+    border:1px solid var(--border-soft);
+    color:var(--text-secondary);
+    border-radius:8px;
+    padding:4px 8px;
+    font-size:11px;
+    cursor:pointer;
+    opacity:0;
+    transition:opacity 0.15s ease;
+}
+.ai-box:hover .copy-btn{ opacity:1; }
+.copy-btn.copied{ color:var(--success); opacity:1; }
+
+.ai-text.typing-cursor::after{
+    content:"▌";
+    display:inline-block;
+    margin-inline-start:2px;
+    animation:blinkCursor 0.9s steps(1) infinite;
+    color:var(--accent);
+}
+@keyframes blinkCursor{ 50%{ opacity:0; } }
+
+
+/* ===================== Source cards (feature 13) ===================== */
+
+.source-box{
+    border-top:1px solid var(--border-soft);
+    margin-top:14px;
+    padding-top:12px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+}
+
+.source-box-label{
+    font-size:11px;
+    font-weight:700;
+    color:var(--text-secondary);
+    display:flex;
+    align-items:center;
+    gap:6px;
+}
+
+.source-cards{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+}
+
+.source-card{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:var(--bg-elevated-2);
+    border:1px solid var(--border-soft);
+    border-radius:10px;
+    padding:8px 10px;
+    text-decoration:none;
+    color:var(--text);
+    font-size:12px;
+    transition:border-color 0.15s ease, transform 0.1s ease;
+}
+.source-card:hover{ border-color:var(--accent); transform:translateY(-1px); }
+.source-card .src-icon{ font-size:14px; }
+.source-card .src-text{ display:flex; flex-direction:column; gap:1px; }
+.source-card .src-file{ font-weight:700; max-width:140px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.source-card .src-page{ color:var(--text-faint); font-size:10.5px; }
+
+
+.input-area{
+    display:flex;
+    align-items:flex-end;
+    gap:10px;
+    margin-top:18px;
+}
+
+.question-form{
+    display:flex;
+    flex:1;
+    gap:10px;
+    background:var(--bg-card);
+    border:1px solid var(--border-soft);
+    border-radius:16px;
+    padding:8px;
+    box-shadow:var(--shadow-soft);
+}
+
+.question-form textarea{
+    flex:1;
+    resize:none;
+    border:none;
+    outline:none;
+    background:transparent;
+    color:var(--text);
+    padding:10px;
+    font-size:15px;
+    max-height:140px;
+    min-height:24px;
+    line-height:1.5;
+    font-family:inherit;
+}
+.question-form textarea::placeholder{ color:var(--text-faint); }
+
+.question-form textarea:disabled{ opacity:0.5; }
+
+#send-btn{
+    background:var(--accent);
+    color:var(--accent-contrast);
+    border:none;
+    border-radius:12px;
+    padding:0 20px;
+    font-weight:800;
+    font-size:14px;
+    cursor:pointer;
+    transition:background 0.15s ease, transform 0.1s ease;
+    align-self:stretch;
+}
+#send-btn:hover{ background:var(--accent-strong); }
+#send-btn:active{ transform:scale(0.96); }
+#send-btn:disabled{ opacity:0.5; cursor:not-allowed; }
+
+.upload-btn{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:52px;
+    height:52px;
+    font-size:20px;
+    border-radius:50%;
+    background:var(--bg-card);
+    border:1px solid var(--border-soft);
+    color:var(--text);
+    cursor:pointer;
+    box-shadow:var(--shadow-soft);
+    transition:background 0.15s ease, transform 0.15s ease;
+    flex-shrink:0;
+}
+.upload-btn:hover{ background:var(--bg-elevated-2); transform:scale(1.05); }
+
+.shortcut-hint{
+    text-align:center;
+    color:var(--text-faint);
+    font-size:11.5px;
+    margin-top:10px;
+}
+.shortcut-hint kbd{
+    background:var(--bg-elevated-2);
+    border:1px solid var(--border);
+    border-radius:5px;
+    padding:1px 5px;
+    font-size:10.5px;
+}
+
+
+/* ============================ Modal + toast ============================ */
+
+.modal-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.5);
+    backdrop-filter:blur(2px);
+    z-index:80;
+    display:none;
+    align-items:center;
+    justify-content:center;
+}
+.modal-overlay.open{ display:flex; }
+
+.modal-card{
+    background:var(--bg-elevated);
+    border:1px solid var(--border);
+    border-radius:18px;
+    padding:22px;
+    width:90%;
+    max-width:380px;
+    box-shadow:var(--shadow-lift);
+    animation:modalPop 0.18s ease;
+}
+@keyframes modalPop{
+    from{ opacity:0; transform:scale(0.96) translateY(6px); }
+    to{ opacity:1; transform:scale(1) translateY(0); }
+}
+
+.modal-card h3{ margin:0 0 14px 0; font-size:16px; }
+.modal-card input[type=text]{
+    width:100%;
+    padding:11px 12px;
+    border-radius:10px;
+    border:1px solid var(--border);
+    background:var(--bg-input);
+    color:var(--text);
+    font-size:14px;
+    outline:none;
+    margin-bottom:16px;
+}
+.modal-card input[type=text]:focus{ border-color:var(--accent); }
+
+.modal-card p{ color:var(--text-secondary); font-size:13.5px; margin:0 0 18px 0; }
+
+.modal-actions{ display:flex; gap:10px; justify-content:flex-end; }
+.modal-actions button{
+    border:none;
+    border-radius:10px;
+    padding:10px 16px;
+    font-size:13.5px;
+    font-weight:700;
+    cursor:pointer;
+}
+.modal-cancel{ background:var(--bg-elevated-2); color:var(--text); }
+.modal-confirm{ background:var(--accent); color:var(--accent-contrast); }
+.modal-confirm.danger{ background:var(--danger); color:#fff; }
+
+
+.toast-stack{
+    position:fixed;
+    bottom:20px;
+    left:50%;
+    transform:translateX(-50%);
+    z-index:90;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    align-items:center;
+}
+.toast{
+    background:var(--bg-elevated);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:10px 18px;
+    border-radius:12px;
+    font-size:13px;
+    box-shadow:var(--shadow-lift);
+    animation:toastIn 0.2s ease;
+}
+@keyframes toastIn{
+    from{ opacity:0; transform:translateY(8px); }
+    to{ opacity:1; transform:translateY(0); }
+}
+
+
+@media (max-width: 640px){
+
+    .file-card{ padding:16px; }
+    .file-card-top{ flex-direction:column; align-items:stretch; }
+    .file-card-actions{ justify-content:stretch; }
+    .file-card-actions .pill-btn{ flex:1; }
+    .chat-window{ height:56vh; padding:14px; }
+    .user-box, .ai-box{ max-width:92%; }
+    .chat-container{ margin:16px auto; width:95%; }
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+<div class="app-layout">
+
+<!-- ========================= Sidebar ========================= -->
+<div class="sidebar" id="sidebar">
+
+    <div class="sidebar-header">
+        <div class="brand"><span class="brand-dot"></span> Awab AI</div>
+        <button type="button" class="theme-toggle-btn" id="theme-toggle-btn" title="تبديل المظهر">
+            <span id="theme-icon">🌙</span>
+        </button>
+    </div>
+
+    <div class="sidebar-actions">
+        <button type="button" class="new-chat-btn" id="new-chat-btn">
+            <span>＋</span> محادثة جديدة
+        </button>
+        <button type="button" class="new-folder-btn" id="new-folder-btn" title="مجلد جديد">
+            📁＋
+        </button>
+    </div>
+
+    <div class="sidebar-search">
+        <input type="text" id="conv-search" placeholder="🔍 بحث في المحادثات...">
+        <span class="kbd-hint">Ctrl K</span>
+    </div>
+
+    <div class="bulk-bar" id="bulk-bar">
+        <span id="bulk-count">0 محدد</span>
+        <div style="display:flex; gap:6px;">
+            <button type="button" class="bulk-cancel" id="bulk-cancel-btn">إلغاء</button>
+            <button type="button" id="bulk-delete-btn">🗑️ حذف المحدد</button>
+        </div>
+    </div>
+
+    <div class="conv-list" id="conv-list" data-select-mode="false">
+
+        {% macro render_conv(conv) %}
+        <div class="conv-item {% if conv.id == conversation_id %}active{% endif %}"
+             data-id="{{ conv.id }}"
+             data-title="{{ (conv.title or '')|lower }}"
+             data-files="{{ (conv.files|join(' '))|lower }}">
+
+            <input type="checkbox" class="conv-checkbox" data-id="{{ conv.id }}">
+
+            <div class="conv-link" data-id="{{ conv.id }}" onclick="openConversation(this)">
+                <span class="conv-icon {% if conv.pinned %}pinned{% endif %}">{% if conv.pinned %}⭐{% else %}📄{% endif %}</span>
+                <div class="conv-text">
+                    <span class="conv-name" data-id="{{ conv.id }}" title="{{ conv.title }}">{{ conv.title }}</span>
+                    <span class="conv-meta-row">
+                        <span>{{ conv.last_activity_display }}</span>
+                        {% if conv.file_count and conv.file_count > 1 %}
+                        <span class="conv-file-badge">{{ conv.file_count }} ملفات</span>
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+
+            <div class="conv-quick-actions">
+                <button type="button" class="pin-btn {% if conv.pinned %}is-pinned{% endif %}"
+                        data-id="{{ conv.id }}" data-pinned="{{ 'true' if conv.pinned else 'false' }}"
+                        title="تثبيت">⭐</button>
+                <button type="button" class="rename-btn" data-id="{{ conv.id }}" title="إعادة تسمية">✏️</button>
+                <button type="button" class="move-btn" data-id="{{ conv.id }}" title="نقل إلى مجلد">📁</button>
+                <button type="button" class="conv-delete-btn" data-id="{{ conv.id }}" title="حذف">🗑️</button>
+            </div>
+
+        </div>
+        {% endmacro %}
+
+        {% for folder in folders %}
+        <div class="conv-group" data-folder-id="{{ folder.id }}">
+            <div class="conv-group-label {% if folder.collapsed %}collapsed{% endif %}" data-folder-id="{{ folder.id }}" onclick="toggleFolderUI(this)">
+                <span class="chev">▾</span>
+                <span>📁 {{ folder.name }}</span>
+                <div class="folder-actions">
+                    <button type="button" class="folder-rename-btn" data-id="{{ folder.id }}" data-name="{{ folder.name }}" onclick="event.stopPropagation(); openRenameFolderModal(this)" title="إعادة تسمية">✏️</button>
+                    <button type="button" class="folder-delete-btn" data-id="{{ folder.id }}" onclick="event.stopPropagation(); deleteFolder(this)" title="حذف المجلد">🗑️</button>
+                </div>
+            </div>
+            <div class="conv-group-body {% if folder.collapsed %}collapsed{% endif %}" data-folder-id="{{ folder.id }}">
+                {% if folder.conversations %}
+                    {% for conv in folder.conversations %}{{ render_conv(conv) }}{% endfor %}
+                {% else %}
+                    <div class="conv-empty">لا توجد محادثات</div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+
+        {% if unfiled_conversations %}
+            {% for conv in unfiled_conversations %}{{ render_conv(conv) }}{% endfor %}
+        {% elif not folders %}
+            <div class="conv-empty" id="conv-empty-message">لا توجد محادثات سابقة</div>
+        {% endif %}
+
+    </div>
+</div>
+
+
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar(false)"></div>
+
+
+<!-- ======================= Main content ======================= -->
+<div class="main-content" id="drop-zone">
+
+
+<div class="chat-container">
+
+
+<div class="chat-header">
+    <button type="button" class="sidebar-toggle-btn" id="sidebar-toggle-btn" title="المحادثات">☰</button>
+    <h1>🤖 Awab AI PDF Assistant</h1>
+    <p>ارفع ملفاتك واسأل الذكاء الاصطناعي</p>
+</div>
+
+
+<!-- ===================== File card (multi-PDF aware) ===================== -->
+{% if conversation_id and files %}
+<div class="file-card">
+
+    <div class="file-card-top">
+
+        <div class="conversation-title-row">
+            <span class="conversation-title" id="conversation-title" contenteditable="false"
+                  data-id="{{ conversation_id }}">{{ conversation_title }}</span>
+            <button type="button" class="icon-btn" id="title-rename-btn" title="إعادة تسمية المحادثة">✏️</button>
+            <button type="button" class="icon-btn {% if conversation_pinned %}is-pinned{% endif %}" id="title-pin-btn"
+                    data-id="{{ conversation_id }}" data-pinned="{{ 'true' if conversation_pinned else 'false' }}"
+                    title="تثبيت المحادثة">⭐</button>
+        </div>
+
+        <div class="file-card-actions">
+            <label for="pdf-file-add" class="pill-btn" title="أضف ملف PDF آخر لنفس المحادثة">
+                📎 إضافة PDF
+            </label>
+
+            <div class="export-menu-wrap">
+                <button type="button" class="pill-btn" id="export-btn">⬇️ تصدير</button>
+                <div class="export-menu" id="export-menu">
+                    <a href="/export-chat?conversation_id={{ conversation_id }}&format=md">📝 Markdown</a>
+                    <a href="/export-chat?conversation_id={{ conversation_id }}&format=txt">🧾 نص عادي</a>
+                    <a href="/export-chat?conversation_id={{ conversation_id }}&format=json">🗂️ JSON</a>
+                    <a href="/export-chat?conversation_id={{ conversation_id }}&format=pdf">📄 PDF</a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="file-chips">
+        {% for f in files %}
+        <div class="file-chip">
+            <span class="chip-icon">📄</span>
+            <div>
+                <div>{{ f.filename }}</div>
+                <div class="chip-meta">{{ f.total_pages }}{% if f.total_pages != "-" %} صفحة{% endif %} · {{ f.file_size }}</div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="upload-progress-wrap" id="upload-progress-wrap">
+        <div class="upload-progress-row">
+            <span id="upload-progress-label">جاري الرفع...</span>
+            <div class="upload-progress-bar-track"><div class="upload-progress-bar-fill" id="upload-progress-fill"></div></div>
+            <span class="upload-progress-status" id="upload-progress-status">0%</span>
+        </div>
+    </div>
+
+</div>
+{% else %}
+<div class="file-card">
+    <div class="file-card-empty">
+        <span class="file-card-empty-text">📄 لا يوجد ملف مرفوع حالياً - اسحب PDF هنا أو</span>
+        <label for="pdf-file-add" class="pill-btn primary" title="رفع PDF">📎 رفع PDF</label>
+    </div>
+    <div class="upload-progress-wrap" id="upload-progress-wrap">
+        <div class="upload-progress-row">
+            <span id="upload-progress-label">جاري الرفع...</span>
+            <div class="upload-progress-bar-track"><div class="upload-progress-bar-fill" id="upload-progress-fill"></div></div>
+            <span class="upload-progress-status" id="upload-progress-status">0%</span>
+        </div>
+    </div>
+</div>
+{% endif %}
+<!-- =============================================================== -->
+
+
+<div class="chat-window" id="chat-window">
+
+
+{% if not messages %}
+<div class="empty-state">
+    <span class="empty-icon">📎</span>
+    ارفع ملف PDF واحد أو أكثر من الزر بالأعلى لتبدأ المحادثة
+</div>
+{% endif %}
+
+
+{% for msg in messages %}
+
+{% if msg.role == "user" %}
+<div class="msg-row user fade-in">
+    <div class="user-box">
+        <span class="msg-label">👤 المستخدم</span>
+        {{ msg.text }}
+    </div>
+</div>
+
+{% else %}
+<div class="msg-row ai fade-in" {% if loop.last %}data-latest="true"{% endif %}>
+    <div class="ai-box">
+        <button type="button" class="copy-btn" onclick="copyMessage(this)">📋 نسخ</button>
+        <span class="msg-label">🤖 Awab AI</span>
+        <div class="ai-text" data-raw="{{ msg.text }}">{{ msg.text }}</div>
+
+        {% if msg.sources %}
+        <div class="source-box">
+            <span class="source-box-label">📎 المصادر</span>
+            <div class="source-cards">
+                {% for src in msg.sources %}
+                <a class="source-card" href="/uploads/{{ src.filename }}#page={{ src.page }}" target="_blank">
+                    <span class="src-icon">📄</span>
+                    <span class="src-text">
+                        <span class="src-file">{{ src.filename }}</span>
+                        <span class="src-page">صفحة {{ src.page }}</span>
+                    </span>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+{% endif %}
+
+{% endfor %}
+
+
+</div>
+
+
+
+<div class="input-area">
+
+<form class="upload-form" action="/upload-chat" method="post" enctype="multipart/form-data" id="upload-form">
+    <label for="pdf-file-add" class="upload-btn" title="رفع PDF">📎</label>
+    <input type="file" id="pdf-file-add" name="file" accept=".pdf" style="display:none;">
+    {% if conversation_id %}<input type="hidden" name="conversation_id" value="{{ conversation_id }}">{% endif %}
+</form>
+
+
+<form class="question-form" id="question-form">
+    <textarea
+        name="question"
+        id="question-input"
+        placeholder="اكتب سؤالك هنا... (Ctrl+Enter للإرسال)"
+        required
+        rows="1"
+    ></textarea>
+
+    <button type="submit" id="send-btn">إرسال 🚀</button>
+</form>
+
+</div>
+
+<div class="footer-powered">
+    ✨ مدعوم بالذكاء الاصطناعي  • 📄 دعم ملفات PDF متعددة • ⚡ استجابة فورية • 🔎 بحث ذكي • 💙 تم تطويره بواسطة Awab
+</div>
+
+
+</div>
+
+
+</div>
+
+
+</div>
+
+
+<!-- ============================ Drag & drop overlay ============================ -->
+<div class="drop-zone-overlay" id="drop-zone-overlay">
+    <div class="drop-zone-card">
+        <div class="drop-icon">📥</div>
+        <div>أفلت ملفات PDF هنا للرفع</div>
+    </div>
+</div>
+
+
+<!-- ============================ Generic modal ============================ -->
+<div class="modal-overlay" id="modal-overlay">
+    <div class="modal-card" id="modal-card">
+        <h3 id="modal-title">عنوان</h3>
+        <p id="modal-message" style="display:none;"></p>
+        <input type="text" id="modal-input" style="display:none;">
+        <div class="modal-actions">
+            <button type="button" class="modal-cancel" id="modal-cancel-btn">إلغاء</button>
+            <button type="button" class="modal-confirm" id="modal-confirm-btn">تأكيد</button>
+        </div>
+    </div>
+</div>
+
+
+<div class="toast-stack" id="toast-stack"></div>
+
+
+<script>
+
+/* =============================================================
+   Small helpers: toasts + a single reusable modal (replaces
+   window.confirm()/prompt() with something matching the premium
+   UI, feature 8/17/4/15).
+   ============================================================= */
+
+function showToast(text, kind){
+
+    var stack = document.getElementById("toast-stack");
+    var el = document.createElement("div");
+    el.className = "toast";
+    if(kind === "error"){ el.style.borderColor = "var(--danger)"; }
+    el.textContent = text;
+    stack.appendChild(el);
+
+    setTimeout(function(){
+        el.style.transition = "opacity 0.3s ease";
+        el.style.opacity = "0";
+        setTimeout(function(){ el.remove(); }, 300);
+    }, 2600);
+}
+
+
+var modalResolve = null;
+
+function openModal(opts){
+    return new Promise(function(resolve){
+
+        modalResolve = resolve;
+
+        document.getElementById("modal-title").textContent = opts.title || "";
+
+        var msgEl = document.getElementById("modal-message");
+        if(opts.message){ msgEl.textContent = opts.message; msgEl.style.display = "block"; }
+        else{ msgEl.style.display = "none"; }
+
+        var inputEl = document.getElementById("modal-input");
+        if(opts.withInput){
+            inputEl.style.display = "block";
+            inputEl.value = opts.inputValue || "";
+        }else{
+            inputEl.style.display = "none";
+        }
+
+        var confirmBtn = document.getElementById("modal-confirm-btn");
+        confirmBtn.textContent = opts.confirmLabel || "تأكيد";
+        confirmBtn.className = "modal-confirm" + (opts.danger ? " danger" : "");
+
+        document.getElementById("modal-overlay").classList.add("open");
+
+        if(opts.withInput){
+            setTimeout(function(){ inputEl.focus(); inputEl.select(); }, 50);
+        }
+    });
+}
+
+function closeModal(result){
+    document.getElementById("modal-overlay").classList.remove("open");
+    if(modalResolve){
+        modalResolve(result);
+        modalResolve = null;
+    }
+}
+
+document.getElementById("modal-cancel-btn").addEventListener("click", function(){ closeModal(null); });
+document.getElementById("modal-overlay").addEventListener("click", function(e){
+    if(e.target === this){ closeModal(null); }
+});
+document.getElementById("modal-confirm-btn").addEventListener("click", function(){
+    var inputEl = document.getElementById("modal-input");
+    var visible = inputEl.style.display !== "none";
+    closeModal(visible ? (inputEl.value || "").trim() : true);
+});
+document.getElementById("modal-input").addEventListener("keydown", function(e){
+    if(e.key === "Enter"){ e.preventDefault(); document.getElementById("modal-confirm-btn").click(); }
+});
+
+
+/* =============================================================
+   Small fetch wrapper
+   ============================================================= */
+
+function postForm(url, data){
+
+    var body = new URLSearchParams();
+    Object.keys(data || {}).forEach(function(k){ body.append(k, data[k]); });
+
+    return fetch(url, {
+        method: "POST",
+        headers: { "Accept": "application/json" },
+        body: body
+    }).then(function(r){ return r.json(); });
+}
+
+
+/* =============================================================
+   Theme toggle (feature 10)
+   ============================================================= */
+
+(function(){
+
+    var root = document.documentElement;
+    var toggleBtn = document.getElementById("theme-toggle-btn");
+    var icon = document.getElementById("theme-icon");
+    var hljsTheme = document.getElementById("hljs-theme");
+
+    function applyThemeVisuals(theme){
+        icon.textContent = theme === "dark" ? "🌙" : "☀️";
+        hljsTheme.href = theme === "dark"
+            ? "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css"
+            : "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css";
+    }
+
+    var stored = null;
+    try{ stored = localStorage.getItem("awab_theme"); }catch(e){}
+
+    var current = stored || root.getAttribute("data-theme") || "dark";
+    root.setAttribute("data-theme", current);
+    applyThemeVisuals(current);
+
+    toggleBtn.addEventListener("click", function(){
+
+        var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+        root.setAttribute("data-theme", next);
+        applyThemeVisuals(next);
+
+        try{ localStorage.setItem("awab_theme", next); }catch(e){}
+
+        fetch("/set-theme", {
+            method:"POST",
+            headers:{ "Content-Type":"application/json" },
+            body: JSON.stringify({theme: next})
+        }).catch(function(){});
+    });
+
+})();
+
+
+/* =============================================================
+   Markdown rendering (feature 12)
+   ============================================================= */
+
+function renderMarkdownInto(el, rawText){
+
+    if(typeof marked === "undefined" || typeof DOMPurify === "undefined"){
+        el.textContent = rawText;
+        return;
+    }
+
+    var dirty = marked.parse(rawText, {breaks:true, gfm:true});
+    var clean = DOMPurify.sanitize(dirty);
+    el.innerHTML = clean;
+
+    if(typeof hljs !== "undefined"){
+        el.querySelectorAll("pre code").forEach(function(block){
+            hljs.highlightElement(block);
+        });
+    }
+}
+
+function renderAllMarkdown(){
+    document.querySelectorAll(".ai-text[data-raw]").forEach(function(el){
+        renderMarkdownInto(el, el.getAttribute("data-raw"));
+    });
+}
+
+function copyMessage(btn){
+
+    var box = btn.closest(".ai-box");
+    var textEl = box.querySelector(".ai-text");
+    var text = textEl.getAttribute("data-raw") || textEl.textContent;
+
+    navigator.clipboard.writeText(text).then(function(){
+        btn.textContent = "✅ تم النسخ";
+        btn.classList.add("copied");
+        setTimeout(function(){ btn.textContent = "📋 نسخ"; btn.classList.remove("copied"); }, 1500);
+    }).catch(function(){
+        showToast("تعذر نسخ النص", "error");
+    });
+}
+
+
+/* =============================================================
+   Chat window helpers
+   ============================================================= */
+
+var chatWindow = document.getElementById("chat-window");
+
+function scrollToBottom(){
+    if(chatWindow){ chatWindow.scrollTop = chatWindow.scrollHeight; }
+}
+
+function escapeHtml(str){
+    var div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+
+/* =============================================================
+   Real Gemini streaming (feature 1)
+   ============================================================= */
+
+(function(){
+
+    var questionForm = document.getElementById("question-form");
+    var questionInput = document.getElementById("question-input");
+    var sendBtn = document.getElementById("send-btn");
+
+    if(!questionForm) return;
+
+    questionInput.addEventListener("input", function(){
+        this.style.height = "auto";
+        this.style.height = Math.min(this.scrollHeight, 140) + "px";
+    });
+
+    questionInput.addEventListener("keydown", function(e){
+        if((e.ctrlKey || e.metaKey) && e.key === "Enter"){
+            e.preventDefault();
+            questionForm.requestSubmit ? questionForm.requestSubmit() : questionForm.dispatchEvent(new Event("submit", {cancelable:true}));
+        }
+    });
+
+    questionForm.addEventListener("submit", function(e){
+
+        e.preventDefault();
+
+        var questionText = questionInput.value.trim();
+        if(!questionText) return;
+
+        var emptyState = chatWindow.querySelector(".empty-state");
+        if(emptyState) emptyState.remove();
+
+        var userRow = document.createElement("div");
+        userRow.className = "msg-row user fade-in";
+        userRow.innerHTML = '<div class="user-box"><span class="msg-label">👤 المستخدم</span>' + escapeHtml(questionText) + "</div>";
+        chatWindow.appendChild(userRow);
+
+        var aiRow = document.createElement("div");
+        aiRow.className = "msg-row ai fade-in";
+        aiRow.innerHTML =
+            '<div class="ai-box">' +
+                '<button type="button" class="copy-btn" onclick="copyMessage(this)">📋 نسخ</button>' +
+                '<span class="msg-label">🤖 Awab AI</span>' +
+                '<div class="ai-text typing-cursor" data-raw=""></div>' +
+                '<div class="source-box" style="display:none;"><span class="source-box-label">📎 المصادر</span><div class="source-cards"></div></div>' +
+            '</div>';
+        chatWindow.appendChild(aiRow);
+
+        var aiTextEl = aiRow.querySelector(".ai-text");
+        var sourceBox = aiRow.querySelector(".source-box");
+        var sourceCards = aiRow.querySelector(".source-cards");
+
+        scrollToBottom();
+
+        questionInput.value = "";
+        questionInput.style.height = "auto";
+        sendBtn.disabled = true;
+        questionInput.disabled = true;
+
+        var fullText = "";
+
+        fetch("/chat-stream", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: "question=" + encodeURIComponent(questionText)
+        }).then(function(response){
+
+            var reader = response.body.getReader();
+            var decoder = new TextDecoder();
+            var buffer = "";
+
+            function pump(){
+
+                return reader.read().then(function(result){
+
+                    if(result.done) return;
+
+                    buffer += decoder.decode(result.value, {stream:true});
+
+                    var events = buffer.split("\n\n");
+                    buffer = events.pop();
+
+                    events.forEach(function(evt){
+
+                        var line = evt.trim();
+                        if(!line.startsWith("data:")) return;
+
+                        var jsonStr = line.slice(5).trim();
+                        var payload;
+                        try{ payload = JSON.parse(jsonStr); }catch(err){ return; }
+
+                        if(payload.type === "token"){
+
+                            fullText += payload.text;
+                            aiTextEl.textContent = fullText;
+                            aiTextEl.setAttribute("data-raw", fullText);
+                            scrollToBottom();
+
+                        }else if(payload.type === "sources" && payload.sources && payload.sources.length){
+
+                            sourceBox.style.display = "flex";
+                            sourceCards.innerHTML = "";
+
+                            payload.sources.forEach(function(src){
+                                var a = document.createElement("a");
+                                a.className = "source-card";
+                                a.href = "/uploads/" + encodeURIComponent(src.filename) + "#page=" + src.page;
+                                a.target = "_blank";
+                                a.innerHTML = '<span class="src-icon">📄</span><span class="src-text"><span class="src-file">' +
+                                    escapeHtml(src.filename) + '</span><span class="src-page">صفحة ' + src.page + '</span></span>';
+                                sourceCards.appendChild(a);
+                            });
+
+                        }else if(payload.type === "error"){
+
+                            aiTextEl.textContent = payload.text;
+                            aiTextEl.setAttribute("data-raw", payload.text);
+
+                        }else if(payload.type === "title" && payload.title){
+
+                            var titleEl = document.getElementById("conversation-title");
+                            if(titleEl) titleEl.textContent = payload.title;
+
+                            var sidebarNameEl = document.querySelector('.conv-name[data-id="' + (titleEl ? titleEl.getAttribute("data-id") : "") + '"]');
+                            if(sidebarNameEl) sidebarNameEl.textContent = payload.title;
+
+                        }else if(payload.type === "done"){
+
+                            aiTextEl.classList.remove("typing-cursor");
+                            renderMarkdownInto(aiTextEl, fullText || aiTextEl.getAttribute("data-raw") || "");
+                        }
+
+                    });
+
+                    return pump();
+                });
+            }
+
+            return pump();
+
+        }).catch(function(err){
+
+            aiTextEl.classList.remove("typing-cursor");
+            aiTextEl.textContent = "حدث خطأ في الاتصال بالخادم.";
+            showToast("تعذر الاتصال بالخادم", "error");
+
+        }).finally(function(){
+
+            sendBtn.disabled = false;
+            questionInput.disabled = false;
+            questionInput.focus();
+
+            refreshSidebar();
+        });
+
+    });
+
+})();
+
+
+/* =============================================================
+   Drag & drop upload with progress (features 6/7)
+   ============================================================= */
+
+var dropZone = document.getElementById("drop-zone");
+var dropOverlay = document.getElementById("drop-zone-overlay");
+var dragCounter = 0;
+
+["dragenter","dragover"].forEach(function(evt){
+    document.addEventListener(evt, function(e){
+        if(e.dataTransfer && Array.prototype.slice.call(e.dataTransfer.types || []).indexOf("Files") !== -1){
+            e.preventDefault();
+            dragCounter++;
+            dropOverlay.classList.add("active");
+        }
+    });
+});
+
+document.addEventListener("dragleave", function(e){
+    dragCounter = Math.max(0, dragCounter - 1);
+    if(dragCounter === 0) dropOverlay.classList.remove("active");
+});
+
+document.addEventListener("drop", function(e){
+    e.preventDefault();
+    dragCounter = 0;
+    dropOverlay.classList.remove("active");
+
+    var files = e.dataTransfer ? e.dataTransfer.files : null;
+    if(files && files.length){ uploadFiles(files); }
+});
+
+document.getElementById("pdf-file-add").addEventListener("change", function(){
+    if(this.files && this.files.length){ uploadFiles(this.files); }
+    this.value = "";
+});
+
+function uploadFiles(fileList){
+
+    var pdfFiles = Array.prototype.filter.call(fileList, function(f){
+        return f.name.toLowerCase().endsWith(".pdf");
+    });
+
+    if(!pdfFiles.length){
+        showToast("الرجاء اختيار ملفات PDF فقط", "error");
+        return;
+    }
+
+    var formData = new FormData();
+    pdfFiles.forEach(function(f){ formData.append("files", f); });
+
+    var convIdInput = document.querySelector('input[name="conversation_id"]');
+    if(convIdInput){ formData.append("conversation_id", convIdInput.value); }
+
+    var wrap = document.getElementById("upload-progress-wrap");
+    var fill = document.getElementById("upload-progress-fill");
+    var status = document.getElementById("upload-progress-status");
+    var label = document.getElementById("upload-progress-label");
+
+    wrap.classList.add("active");
+    fill.style.width = "0%";
+    status.textContent = "0%";
+    status.className = "upload-progress-status";
+    label.textContent = pdfFiles.length > 1 ? ("جاري رفع " + pdfFiles.length + " ملفات...") : "جاري الرفع...";
+
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", "/upload-chat", true);
+    xhr.setRequestHeader("Accept", "application/json");
+
+    xhr.upload.onprogress = function(e){
+        if(e.lengthComputable){
+            var pct = Math.round((e.loaded / e.total) * 100);
+            fill.style.width = pct + "%";
+            status.textContent = pct + "%";
+        }
+    };
+
+    xhr.onload = function(){
+
+        try{
+
+            var data = JSON.parse(xhr.responseText);
+
+            if(data.success){
+
+                fill.style.width = "100%";
+                status.textContent = "✅";
+                status.classList.add("success");
+
+                if(data.rejected && data.rejected.length){
+                    showToast(data.rejected.length + " ملف تم رفضه (غير صالح)", "error");
+                }
+
+                setTimeout(function(){ window.location.href = "/"; }, 500);
+
+            }else{
+
+                status.textContent = "❌";
+                status.classList.add("error");
+                showToast(data.error || "فشل الرفع", "error");
+            }
+
+        }catch(err){
+
+            status.textContent = "❌";
+            status.classList.add("error");
+            showToast("فشل الرفع", "error");
+        }
+    };
+
+    xhr.onerror = function(){
+        status.textContent = "❌";
+        status.classList.add("error");
+        showToast("تعذر الاتصال بالخادم", "error");
+    };
+
+    xhr.send(formData);
+}
+
+
+/* =============================================================
+   Sidebar: open / new chat / delete / rename / pin / move / folders
+   ============================================================= */
+
+function openConversation(el){
+    var id = el.getAttribute("data-id");
+    if(!id) return;
+    window.location.href = "/open-chat?conversation_id=" + encodeURIComponent(id);
+}
+
+document.getElementById("new-chat-btn").addEventListener("click", function(){
+    postForm("/new-chat", {}).finally(function(){ window.location.href = "/"; });
+});
+
+document.getElementById("new-folder-btn").addEventListener("click", function(){
+    openModal({title:"مجلد جديد", withInput:true, confirmLabel:"إنشاء"}).then(function(name){
+        if(!name) return;
+        postForm("/create-folder", {name:name}).then(function(){ window.location.reload(); });
+    });
+});
+
+function toggleFolderUI(labelEl){
+
+    var folderId = labelEl.getAttribute("data-folder-id");
+    var body = document.querySelector('.conv-group-body[data-folder-id="' + folderId + '"]');
+
+    labelEl.classList.toggle("collapsed");
+    body.classList.toggle("collapsed");
+
+    postForm("/toggle-folder", {folder_id: folderId});
+}
+
+function openRenameFolderModal(btn){
+    var folderId = btn.getAttribute("data-id");
+    var currentName = btn.getAttribute("data-name");
+    openModal({title:"إعادة تسمية المجلد", withInput:true, inputValue: currentName, confirmLabel:"حفظ"}).then(function(name){
+        if(!name) return;
+        postForm("/rename-folder", {folder_id: folderId, name: name}).then(function(){ window.location.reload(); });
+    });
+}
+
+function deleteFolder(btn){
+    var folderId = btn.getAttribute("data-id");
+    openModal({title:"حذف المجلد", message:"سيتم حذف المجلد فقط - المحادثات بداخله ستبقى محفوظة.", danger:true, confirmLabel:"حذف"}).then(function(ok){
+        if(!ok) return;
+        postForm("/delete-folder", {folder_id: folderId}).then(function(){ window.location.reload(); });
+    });
+}
+
+document.querySelectorAll(".conv-delete-btn").forEach(function(btn){
+    btn.addEventListener("click", function(e){
+        e.stopPropagation();
+        var id = btn.getAttribute("data-id");
+        openModal({title:"حذف المحادثة", message:"هل تريد حذف هذه المحادثة نهائيًا؟", danger:true, confirmLabel:"حذف"}).then(function(ok){
+            if(!ok) return;
+            postForm("/delete-chat", {conversation_id:id}).then(function(){ window.location.href = "/"; });
+        });
+    });
+});
+
+document.querySelectorAll(".pin-btn").forEach(function(btn){
+    btn.addEventListener("click", function(e){
+        e.stopPropagation();
+        var id = btn.getAttribute("data-id");
+        var pinned = btn.getAttribute("data-pinned") === "true";
+        postForm("/pin-chat", {conversation_id:id, pinned: (!pinned).toString()}).then(function(){ window.location.reload(); });
+    });
+});
+
+document.querySelectorAll(".move-btn").forEach(function(btn){
+    btn.addEventListener("click", function(e){
+        e.stopPropagation();
+        var id = btn.getAttribute("data-id");
+        var folderNames = Array.prototype.map.call(document.querySelectorAll(".conv-group-label span:nth-child(2)"), function(s){ return s.textContent.replace("📁 ",""); });
+        openModal({title:"نقل إلى مجلد", message: folderNames.length ? ("اكتب اسم أحد المجلدات: " + folderNames.join("، ") + " (أو اتركه فارغًا لإزالة من المجلد)") : "لا توجد مجلدات بعد - أنشئ مجلدًا أولاً", withInput:true, confirmLabel:"نقل"}).then(function(name){
+            if(name === null) return;
+
+            if(!name){
+                postForm("/move-chat", {conversation_id:id, folder_id:""}).then(function(){ window.location.reload(); });
+                return;
+            }
+
+            var match = null;
+            document.querySelectorAll(".conv-group-label").forEach(function(label){
+                var labelName = label.querySelector("span:nth-child(2)").textContent.replace("📁 ","").trim();
+                if(labelName === name.trim()){ match = label.getAttribute("data-folder-id"); }
+            });
+
+            if(!match){ showToast("لم يتم العثور على مجلد بهذا الاسم", "error"); return; }
+
+            postForm("/move-chat", {conversation_id:id, folder_id:match}).then(function(){ window.location.reload(); });
+        });
+    });
+});
+
+document.querySelectorAll(".rename-btn").forEach(function(btn){
+    btn.addEventListener("click", function(e){
+        e.stopPropagation();
+        var id = btn.getAttribute("data-id");
+        var nameEl = document.querySelector('.conv-name[data-id="' + id + '"]');
+        openModal({title:"إعادة تسمية المحادثة", withInput:true, inputValue: nameEl.textContent, confirmLabel:"حفظ"}).then(function(title){
+            if(!title) return;
+            postForm("/rename-chat", {conversation_id:id, title:title}).then(function(){
+                nameEl.textContent = title;
+                var mainTitle = document.getElementById("conversation-title");
+                if(mainTitle && mainTitle.getAttribute("data-id") === id){ mainTitle.textContent = title; }
+            });
+        });
+    });
+});
+
+var titleRenameBtn = document.getElementById("title-rename-btn");
+if(titleRenameBtn){
+    titleRenameBtn.addEventListener("click", function(){
+        var titleEl = document.getElementById("conversation-title");
+        var id = titleEl.getAttribute("data-id");
+        openModal({title:"إعادة تسمية المحادثة", withInput:true, inputValue: titleEl.textContent, confirmLabel:"حفظ"}).then(function(title){
+            if(!title) return;
+            postForm("/rename-chat", {conversation_id:id, title:title}).then(function(){
+                titleEl.textContent = title;
+                var sidebarNameEl = document.querySelector('.conv-name[data-id="' + id + '"]');
+                if(sidebarNameEl) sidebarNameEl.textContent = title;
+            });
+        });
+    });
+}
+
+var titlePinBtn = document.getElementById("title-pin-btn");
+if(titlePinBtn){
+    titlePinBtn.addEventListener("click", function(){
+        var id = titlePinBtn.getAttribute("data-id");
+        var pinned = titlePinBtn.getAttribute("data-pinned") === "true";
+        postForm("/pin-chat", {conversation_id:id, pinned: (!pinned).toString()}).then(function(){ window.location.reload(); });
+    });
+}
+
+var conversationTitleEl = document.getElementById("conversation-title");
+if(conversationTitleEl){
+    conversationTitleEl.addEventListener("dblclick", function(){
+        if(titleRenameBtn) titleRenameBtn.click();
+    });
+}
+
+
+/* =============================================================
+   Multi-select delete (feature 17)
+   ============================================================= */
+
+var convList = document.getElementById("conv-list");
+var bulkBar = document.getElementById("bulk-bar");
+var bulkCount = document.getElementById("bulk-count");
+
+function updateBulkBar(){
+    var checked = convList.querySelectorAll(".conv-checkbox:checked");
+    bulkCount.textContent = checked.length + " محدد";
+}
+
+document.querySelectorAll(".conv-checkbox").forEach(function(cb){
+    cb.addEventListener("click", function(e){ e.stopPropagation(); updateBulkBar(); });
+});
+
+document.getElementById("conv-list").addEventListener("contextmenu", function(e){
+    var item = e.target.closest(".conv-item");
+    if(!item) return;
+    e.preventDefault();
+    convList.classList.add("select-mode");
+    bulkBar.classList.add("active");
+    var cb = item.querySelector(".conv-checkbox");
+    cb.checked = true;
+    updateBulkBar();
+});
+
+document.getElementById("bulk-cancel-btn").addEventListener("click", function(){
+    convList.classList.remove("select-mode");
+    bulkBar.classList.remove("active");
+    convList.querySelectorAll(".conv-checkbox").forEach(function(cb){ cb.checked = false; });
+});
+
+document.getElementById("bulk-delete-btn").addEventListener("click", function(){
+
+    var ids = Array.prototype.map.call(convList.querySelectorAll(".conv-checkbox:checked"), function(cb){ return cb.getAttribute("data-id"); });
+
+    if(!ids.length){ showToast("لم يتم تحديد أي محادثة"); return; }
+
+    openModal({title:"حذف المحادثات المحددة", message:"سيتم حذف " + ids.length + " محادثة نهائيًا.", danger:true, confirmLabel:"حذف"}).then(function(ok){
+        if(!ok) return;
+        postForm("/delete-chats-bulk", {conversation_ids: ids.join(",")}).then(function(){ window.location.href = "/"; });
+    });
+});
+
+
+/* =============================================================
+   Search (feature 14)
+   ============================================================= */
+
+var searchInput = document.getElementById("conv-search");
+
+function applySidebarFilter(query){
+
+    query = (query || "").trim().toLowerCase();
+
+    document.querySelectorAll(".conv-item").forEach(function(item){
+
+        var haystack = (item.getAttribute("data-title") || "") + " " + (item.getAttribute("data-files") || "");
+        var matches = !query || haystack.indexOf(query) !== -1;
+
+        item.style.display = matches ? "" : "none";
+    });
+
+    document.querySelectorAll(".conv-group").forEach(function(group){
+
+        var visibleItems = group.querySelectorAll('.conv-item:not([style*="display: none"])');
+        group.style.display = (query && visibleItems.length === 0) ? "none" : "";
+    });
+}
+
+if(searchInput){
+    searchInput.addEventListener("input", function(){ applySidebarFilter(this.value); });
+}
+
+function refreshSidebar(){
+    if(searchInput){ applySidebarFilter(searchInput.value); }
+}
+
+
+/* =============================================================
+   Sidebar toggle (mobile) + export menu + keyboard shortcuts
+   ============================================================= */
+
+function toggleSidebar(forceState){
+
+    var sidebar = document.getElementById("sidebar");
+    var overlay = document.getElementById("sidebar-overlay");
+    if(!sidebar || !overlay) return;
+
+    var shouldOpen = (typeof forceState === "boolean") ? forceState : !sidebar.classList.contains("sidebar-open");
+
+    sidebar.classList.toggle("sidebar-open", shouldOpen);
+    overlay.classList.toggle("sidebar-open", shouldOpen);
+}
+
+var toggleBtn = document.getElementById("sidebar-toggle-btn");
+if(toggleBtn){
+    toggleBtn.addEventListener("click", function(){ toggleSidebar(); });
+}
+
+var exportBtn = document.getElementById("export-btn");
+var exportMenu = document.getElementById("export-menu");
+if(exportBtn){
+    exportBtn.addEventListener("click", function(e){
+        e.stopPropagation();
+        exportMenu.classList.toggle("open");
+    });
+    document.addEventListener("click", function(){ exportMenu.classList.remove("open"); });
+}
+
+document.addEventListener("keydown", function(e){
+
+    var ctrlOrCmd = e.ctrlKey || e.metaKey;
+
+    if(ctrlOrCmd && e.key.toLowerCase() === "k"){
+        e.preventDefault();
+        if(searchInput){ searchInput.focus(); searchInput.select(); }
+    }
+
+    if(ctrlOrCmd && e.key.toLowerCase() === "n"){
+        e.preventDefault();
+        document.getElementById("new-chat-btn").click();
+    }
+
+    if(e.key === "Escape"){
+        toggleSidebar(false);
+        if(exportMenu){ exportMenu.classList.remove("open"); }
+        closeModal(null);
+    }
+});
+
+
+/* =============================================================
+   Initial render
+   ============================================================= */
+
+document.addEventListener("DOMContentLoaded", function(){
+    scrollToBottom();
+    renderAllMarkdown();
+});
+
+</script>
+
+
+</body>
+
+</html>
