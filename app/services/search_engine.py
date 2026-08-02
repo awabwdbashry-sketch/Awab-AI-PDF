@@ -29,7 +29,7 @@ def get_model():
         print("جاري تحميل موديل البحث...")
 
         MODEL = SentenceTransformer(
-            "intfloat/multilingual-e5-small"
+            "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
         )
 
         print("تم تحميل الموديل ✅")
