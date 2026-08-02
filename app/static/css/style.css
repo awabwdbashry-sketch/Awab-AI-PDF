@@ -504,3 +504,18 @@ button:hover{
     border-color:#007bff;
 
 }
+.footer-disclaimer {
+    margin-top: 10px;
+    padding: 12px 18px;
+    text-align: center;
+    font-size: 13px;
+    color: #9ca3af;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    line-height: 1.7;
+    user-select: none;
+}
+
+.footer-disclaimer strong {
+    color: #ffffff;
+    font-weight: 600;
+}
