@@ -315,3 +315,9 @@ AWAB AI is an active AI document-assistant project focused on:
 ## 📄 License
 
 This project is available for educational and personal use.
+## 👨‍💻 Developer
+
+**Awab Bashary | AwabBuilds**
+
+GitHub: **awabwdbashry-sketch**
+
