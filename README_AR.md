@@ -314,3 +314,8 @@ AWAB AI هو مشروع مساعد ذكي للمستندات يركز على:
 ## 📄 الترخيص
 
 هذا المشروع متاح للاستخدام التعليمي والشخصي.
+## 👨‍💻 Developer
+
+**Awab Bashary | AwabBuilds**
+
+GitHub: **awabwdbashry-sketch**
